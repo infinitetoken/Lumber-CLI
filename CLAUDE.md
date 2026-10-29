@@ -10,6 +10,14 @@ npm run build     # tsup into dist/cli.mjs (the bin)
 node dist/cli.mjs help
 ```
 
+## Releasing
+
+`npm run release:patch` (or `:minor` / `:major`): `preversion` runs verify, `npm version` tags, `release` pushes with tags, and the shared publish workflow (`infinitetoken/Workflows`' `npm-publish.yml`, the same `ci.yml` and `publish.yml` as Lumber-Node, Lumber-Kit and the rest of the fleet) publishes with npm's trusted publishing, no token. The repo is private, like Lumber-Node, so npm attaches no provenance.
+
+The first publish (0.1.0) has to be by hand, from Jay's Mac (`npm publish`, with his npm 2FA): npm only lets a package that already exists name a trusted publisher. Then on npmjs.com, the package's settings, Trusted Publisher: GitHub Actions, `infinitetoken` / `Lumber-CLI`, workflow `publish.yml`.
+
+package.json has no `os` field: npm enforces it on installing the project itself, so CI and the publish job (Linux) couldn't build. `keychain.ts` says macOS only instead (`NOT_MACOS`).
+
 ## Layout
 
 - `cli.ts`: the bin's entry, nothing else. `commands.ts`: termkit's `Program` (commands, options, help), spinners and output, and `runCommand(argv)` giving the exit code (2 for a mistake on the command line, 1 otherwise).
@@ -24,12 +32,13 @@ node dist/cli.mjs help
 ## termkit
 
 The CLI is on Jay's `termkit` (Program, input, Spinner, Table, markup, Color). It writes everything to stdout, so:
+
 - `lumber mcp` must never touch a Spinner, `log` or Table: stdout is the MCP protocol there.
 - Spinners stop without a message. Spinner draws nothing when stdout isn't a terminal, but its completion messages would still land in piped or `--json` output.
 - `tail` in a terminal keeps a Spinner as a status line and prints logs above it with `spinner.log(line, '')`; piped or `--json`, logs go straight to stdout and the state to stderr.
 - termkit treats `help` or `version` anywhere in argv as asking for them, so `lumber logs -g help` prints help. `-g Help` searches (the match ignores case).
 - termkit's color module calls `process.exit()` on SIGINT; `tail` uses `prependOnceListener` to clear its status line first.
-- termkit 2.4.12's messages still carry em dashes (`Invalid value "abc" — expected an integer`); TermKit's main has the fix, unreleased as of 2026-10-29.
+- termkit 2.4.12's parse errors still carry an em dash (`Invalid value "abc"`, then the dash, then `expected an integer`); TermKit's main has the fix, unreleased as of 2026-10-29.
 
 ## Colors
 

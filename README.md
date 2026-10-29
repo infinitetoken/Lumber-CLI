@@ -10,7 +10,7 @@ macOS only for now. It reads; it never changes anything in Lumber.
 npm install -g @infinitetoken/lumber-cli
 ```
 
-Needs Node 20 or later.
+The package is scoped: the unscoped `lumber` and `lumber-cli` on npm are someone else's.
 
 ## Signing in
 
@@ -20,7 +20,7 @@ lumber login
 
 Signs in with your Lumber email and password, then links this Mac the way a new phone links: it shows a QR code and a link code, and a device that already has your account key approves it. On your iPhone, scan the code with the camera, open it in Lumber and tap Approve. On another device, open Account > Link another device in Lumber and paste the code.
 
-The session and your account key are kept in your login keychain (the "Lumber CLI" item). Signing in again later, as the same person, needs no new link. `lumber logout` removes both.
+The session and your account key are kept in your login keychain (the "Lumber CLI" item). The session renews itself each day you use it, so it only ends after 30 days without running `lumber`; signing in again then, as the same person, needs no new link. `lumber logout` removes both.
 
 ## Commands
 
@@ -40,6 +40,9 @@ lumber help                            # everything, and `lumber logs help` for 
 - `-g, --grep` matches the message, request and trace ids, context and metadata, ignoring case. The server only holds ciphertext, so the search runs here, reading back through at most 20,000 logs.
 - `-v, --verbose` shows each log's id, ids, context and metadata under it. `--json` prints one JSON object per log, for scripts and agents.
 - `tail` follows over Lumber's live connection for apps on Dev and Pro plans, and checks every 5 seconds for the rest. In a terminal its connection state stays on a line under the logs; `-q` hides it.
+- `help` anywhere on the command line shows help, so `lumber logs -g help` prints help rather than searching. Search for `-g Help` instead: the match ignores case.
+
+The output takes the apps' colors: spinners, help and prompts in your accent (the one you picked in Lumber's Account screen), levels in their colors, and a square in each app's color before its name. Piped or with `--json`, it's plain text.
 
 ## AI agents (MCP)
 
@@ -81,6 +84,20 @@ Log messages, context and metadata are written by your app and the people using 
 ## How it stays private
 
 Each app's logs are encrypted with its own key before they leave your servers (AES-256-GCM). The server keeps a copy of each app key wrapped to each person's account key, which it can't unwrap. Linking hands this Mac your account key, wrapped by the approving device to a key this Mac made for the link; the code you scan carries that key, so the server never chooses where your account key goes. Then each command fetches the ciphertext and decrypts it here.
+
+## Requirements
+
+- macOS, for the Keychain. On other systems `lumber` says so; Linux and Windows are planned.
+- Node 20 or later.
+- A Lumber account, and a phone or Mac where Lumber already has your account key, to approve the link.
+
+## Publishing
+
+Tag a release to trigger the publish workflow:
+
+```sh
+npm run release:patch   # or release:minor / release:major: verifies, tags and pushes
+```
 
 ## License
 
