@@ -1,0 +1,14 @@
+name: Publish
+run-name: Publish ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    uses: infinitetoken/Workflows/.github/workflows/npm-publish.yml@v1
+    permissions:
+      contents: read
+      id-token: write

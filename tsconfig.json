@@ -1,0 +1,7 @@
+{
+  "extends": "@infinitetoken/tsconfig/node",
+  "compilerOptions": {
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}

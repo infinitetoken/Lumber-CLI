@@ -1,0 +1,75 @@
+{
+  "name": "@infinitetoken/lumber-cli",
+  "version": "0.1.0",
+  "description": "Read your Lumber logs from the terminal and from AI agents. Logs are decrypted on your machine, so Lumber still can't read them",
+  "keywords": [
+    "cli",
+    "e2e-encryption",
+    "logging",
+    "logs",
+    "lumber",
+    "mcp",
+    "model-context-protocol",
+    "tail"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/infinitetoken/lumber-cli.git"
+  },
+  "license": "MIT",
+  "author": "Jay Deaton",
+  "sideEffects": false,
+  "type": "commonjs",
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "lumber": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "fix": "eslint --fix",
+    "lint": "eslint",
+    "prepublishOnly": "npm run build",
+    "release": "git push --follow-tags",
+    "release:major": "npm version major && npm run release",
+    "release:minor": "npm version minor && npm run release",
+    "release:patch": "npm version patch && npm run release",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build",
+    "preversion": "npm run verify"
+  },
+  "prettier": "@infinitetoken/eslint-config/prettier",
+  "dependencies": {
+    "@infinitetoken/lumber-kit": "^0.5.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "qrcode": "^1.5.4",
+    "socket.io-client": "^4.8.4",
+    "termkit": "^2.4.12",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@infinitetoken/eslint-config": "^0.2.1",
+    "@infinitetoken/jest-config": "^0.5.2",
+    "@infinitetoken/tsconfig": "^0.6.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.9",
+    "@types/qrcode": "^1.5.6",
+    "eslint": "^10.13.0",
+    "jest": "^30.5.2",
+    "prettier": "^3.9.10",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
