@@ -1,6 +1,6 @@
 {
   "name": "@infinitetoken/lumber-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Read your Lumber logs from the terminal and from AI agents. Logs are decrypted on your machine, so Lumber still can't read them",
   "keywords": [
     "cli",
