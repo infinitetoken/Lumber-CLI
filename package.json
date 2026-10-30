@@ -46,9 +46,10 @@
   },
   "prettier": "@infinitetoken/eslint-config/prettier",
   "dependencies": {
-    "@infinitetoken/lumber-kit": "^0.5.2",
+    "@infinitetoken/lumber-kit": "^0.6.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "qrcode": "^1.5.4",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "socket.io-client": "^4.8.4",
     "termkit": "^2.4.12",
     "zod": "^4.6.7"
@@ -59,7 +60,6 @@
     "@infinitetoken/tsconfig": "^0.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.9",
-    "@types/qrcode": "^1.5.6",
     "eslint": "^10.13.0",
     "jest": "^30.5.2",
     "prettier": "^3.9.10",

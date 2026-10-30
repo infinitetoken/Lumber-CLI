@@ -18,7 +18,7 @@ The package is scoped: the unscoped `lumber` and `lumber-cli` on npm are someone
 lumber login
 ```
 
-Signs in with your Lumber email and password, then links this Mac the way a new phone links: it shows a QR code and a link code, and a device that already has your account key approves it. On your iPhone, scan the code with the camera, open it in Lumber and tap Approve. On another device, open Account > Link another device in Lumber and paste the code.
+Signs in with your Lumber email and password, then links this Mac the way a new phone links: open Lumber on a phone or Mac that already has your account key (your phone gets a notification, and the Mac app asks when you switch to it, or open Account > Link another device), tap Show Code, and type the 7-digit code at the `Code` prompt. That device checks the code and sends your account key. The request lasts 10 minutes, and a wrong code ends it. The other device needs an up-to-date Lumber app.
 
 The session and your account key are kept in your login keychain (the "Lumber CLI" item). The session renews itself each day you use it, so it only ends after 30 days without running `lumber`; signing in again then, as the same person, needs no new link. `lumber logout` removes both.
 
@@ -89,7 +89,7 @@ Each app's logs are encrypted with its own key before they leave your servers (A
 
 - macOS, for the Keychain. On other systems `lumber` says so; Linux and Windows are planned.
 - Node 20 or later.
-- A Lumber account, and a phone or Mac where Lumber already has your account key, to approve the link.
+- A Lumber account, and a phone or Mac where Lumber already has your account key, to show the code that links this Mac.
 
 ## Publishing
 
