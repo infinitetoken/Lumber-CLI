@@ -35,8 +35,7 @@ describe('tokenNeedsRefresh', () => {
     expect(tokenNeedsRefresh(token({ iat: seconds - 3600, exp: seconds + 30 * 86400 }), now)).toBe(false)
   })
 
-  it('trades in a token over a day old, or one with no expiry', () => {
+  it('trades in a token over a day old', () => {
     expect(tokenNeedsRefresh(token({ iat: seconds - 2 * 86400, exp: seconds + 28 * 86400 }), now)).toBe(true)
-    expect(tokenNeedsRefresh(token({ iat: seconds - 60 }), now)).toBe(true)
   })
 })

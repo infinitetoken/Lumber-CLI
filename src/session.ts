@@ -48,14 +48,13 @@ export const request = async <T>(path: string, { method = 'GET', body, token }: 
 }
 
 // Tokens last 30 days from their last refresh, so trading one over a day old for a fresh one, as the apps do
-// (useSessionKeeper), means a session only ends on a Mac where lumber goes unused for 30 days. A token with no expiry
-// is from before expiry existed, and trades in too.
+// (useSessionKeeper), means a session only ends on a Mac where lumber goes unused for 30 days.
 const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000
 
 export const tokenNeedsRefresh = (token: string, now = Date.now()): boolean => {
   try {
-    const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as { iat?: number; exp?: number }
-    return !claims.exp || !claims.iat || now - claims.iat * 1000 > REFRESH_AFTER_MS
+    const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as { iat?: number }
+    return !claims.iat || now - claims.iat * 1000 > REFRESH_AFTER_MS
   } catch {
     return false
   }
