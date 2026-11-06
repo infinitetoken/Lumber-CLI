@@ -11,6 +11,7 @@ import { serveMcp } from './mcp'
 import { type Client, loadSession, openClient, saveSession } from './session'
 import { followLogs } from './tail'
 import { parseTime } from './time'
+import { checksForUpdates, startUpdateCheck } from './update'
 
 const out = (text: string): void => void process.stdout.write(`${text}\n`)
 const note = (text: string): void => void process.stderr.write(`${Color.faint(text)}\n`)
@@ -198,6 +199,17 @@ const fail = (message: string) => process.stderr.write(`${Color.hex(THEME.error)
 // Runs a command line (without node and the script) and gives the exit code. A command that keeps running (tail,
 // mcp) resolves once it ends or, for mcp, once it's serving.
 export const runCommand = async (argv: string[]): Promise<number> => {
+  const update = checksForUpdates(argv) ? startUpdateCheck({ version: VERSION }) : null
+  try {
+    return await run(argv)
+  } finally {
+    // After the command's own output, on stderr, so piped and --json output stay clean
+    const notice = await update?.finish()
+    if (notice) process.stderr.write(`${notice}\n`)
+  }
+}
+
+const run = async (argv: string[]): Promise<number> => {
   try {
     // Your accent colors the help and prompts too, so it's read before anything draws
     useAccent((await loadSession().catch(() => null))?.color)

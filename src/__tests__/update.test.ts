@@ -1,0 +1,112 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { checksForUpdates, isNewer, startUpdateCheck, type UpdateState } from '../update'
+
+const DAY = 24 * 60 * 60 * 1000
+const NOW = Date.UTC(2026, 10, 6, 12)
+
+let file = ''
+const save = (state: UpdateState) => writeFileSync(file, JSON.stringify(state))
+const saved = (): UpdateState => JSON.parse(readFileSync(file, 'utf8')) as UpdateState
+const npmSays = (version: string) => jest.fn(async () => new Response(JSON.stringify({ name: '@infinitetoken/lumber-cli', version }))) as unknown as typeof fetch
+
+beforeEach(() => {
+  file = join(mkdtempSync(join(tmpdir(), 'lumber-update-')), 'update.json')
+})
+
+describe('isNewer', () => {
+  it('compares each part as a number', () => {
+    expect(isNewer('0.2.10', '0.2.9')).toBe(true)
+    expect(isNewer('1.0.0', '0.9.9')).toBe(true)
+    expect(isNewer('0.2.1', '0.2.1')).toBe(false)
+    expect(isNewer('0.2.0', '0.2.1')).toBe(false)
+  })
+
+  it('never takes a prerelease or anything unexpected for newer', () => {
+    expect(isNewer('0.3.0-beta.1', '0.2.1')).toBe(false)
+    expect(isNewer('latest', '0.2.1')).toBe(false)
+  })
+})
+
+describe('startUpdateCheck', () => {
+  it('asks npm on a first run and says a newer version is out', async () => {
+    const get = npmSays('0.3.0')
+    const notice = await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: get }).finish()
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(notice).toContain('lumber 0.3.0 is out (you have 0.2.1)')
+    expect(notice).toContain('npm install -g @infinitetoken/lumber-cli')
+    expect(saved()).toEqual({ checkedAt: NOW, latest: '0.3.0', notifiedAt: NOW })
+  })
+
+  it('asks at most once a day, and says so at most once a day', async () => {
+    save({ checkedAt: NOW - 1000, latest: '0.3.0', notifiedAt: NOW - 1000 })
+    const get = npmSays('0.3.0')
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: get }).finish()).toBeNull()
+    expect(get).not.toHaveBeenCalled()
+
+    // A day on, it asks again, and says it again
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW + DAY, fetch: get }).finish()).toContain('0.3.0 is out')
+    expect(get).toHaveBeenCalledTimes(1)
+  })
+
+  it('says it from the saved answer the first time in a day, without asking', async () => {
+    save({ checkedAt: NOW - 1000, latest: '0.3.0' })
+    const get = npmSays('0.3.0')
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: get }).finish()).toContain('0.3.0 is out')
+    expect(get).not.toHaveBeenCalled()
+  })
+
+  it('says nothing when this is the latest', async () => {
+    expect(await startUpdateCheck({ version: '0.3.0', file, now: () => NOW, fetch: npmSays('0.3.0') }).finish()).toBeNull()
+    expect(saved()).toEqual({ checkedAt: NOW, latest: '0.3.0' })
+  })
+
+  it('never waits on npm: a check the command outruns is dropped and asked again next time', async () => {
+    let signal: AbortSignal | undefined
+    const get = jest.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          signal = init?.signal ?? undefined
+          signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        })
+    ) as unknown as typeof fetch
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: get }).finish()).toBeNull()
+    expect(signal?.aborted).toBe(true)
+    expect(() => readFileSync(file)).toThrow()
+  })
+
+  it('shrugs off npm failing', async () => {
+    const down = jest.fn(async () => new Response('', { status: 503 })) as unknown as typeof fetch
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: down }).finish()).toBeNull()
+    const offline = jest.fn(async () => Promise.reject(new TypeError('fetch failed'))) as unknown as typeof fetch
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: offline }).finish()).toBeNull()
+  })
+
+  it('reads a broken saved file as nothing saved', async () => {
+    writeFileSync(file, 'not json')
+    expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: npmSays('0.3.0') }).finish()).toContain('0.3.0 is out')
+  })
+})
+
+describe('checksForUpdates', () => {
+  const tty = (value: boolean) => Object.defineProperty(process.stderr, 'isTTY', { value, configurable: true })
+  afterEach(() => tty(false))
+
+  it('checks for a person at a terminal', () => {
+    tty(true)
+    expect(checksForUpdates(['logs'], {})).toBe(true)
+    expect(checksForUpdates([], {})).toBe(true)
+  })
+
+  it('never for the MCP server, tail, CI, a pipe or when turned off', () => {
+    tty(true)
+    expect(checksForUpdates(['mcp'], {})).toBe(false)
+    expect(checksForUpdates(['tail', 'Lumber-Test'], {})).toBe(false)
+    expect(checksForUpdates(['logs'], { CI: 'true' })).toBe(false)
+    expect(checksForUpdates(['logs'], { LUMBER_NO_UPDATE_CHECK: '1' })).toBe(false)
+    tty(false)
+    expect(checksForUpdates(['logs'], {})).toBe(false)
+  })
+})

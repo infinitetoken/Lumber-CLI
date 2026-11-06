@@ -41,6 +41,7 @@ lumber help                            # everything, and `lumber logs help` for 
 - `-v, --verbose` shows each log's id, ids, context and metadata under it. `--json` prints one JSON object per log, for scripts and agents.
 - `tail` follows over Lumber's live connection for apps on Dev and Pro plans, and checks every 5 seconds for the rest. In a terminal its connection state stays on a line under the logs; `-q` hides it.
 - `help` anywhere on the command line shows help, so `lumber logs -g help` prints help rather than searching. Search for `-g Help` instead: the match ignores case.
+- When a newer version is on npm, a command run at a terminal says so after its output, at most once a day, with the command to update. It asks npm at most once a day, while the command runs, so it never slows one down. `tail`, `mcp`, piped output and CI never check; `LUMBER_NO_UPDATE_CHECK=1` turns it off.
 
 The output takes the apps' colors: spinners, help and prompts in your accent (the one you picked in Lumber's Account screen), levels in their colors, and a square in each app's color before its name. Piped or with `--json`, it's plain text.
 
