@@ -19,14 +19,21 @@ const run = (args: string[], input?: string): Promise<{ code: number; stdout: st
       reject(new UsageError(NOT_MACOS))
       return
     }
-    const child = spawn('/usr/bin/security', args, { stdio: ['pipe', 'pipe', 'pipe'] })
+    // Only `security -i` reads stdin. Piping it to the others raced them: one that had already exited closed the
+    // pipe, and the write that ended it raised EPIPE with no handler, which crashed the command (seen on
+    // `lumber apps`, 2026-11-06)
+    const child = spawn('/usr/bin/security', args, { stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'] })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()))
-    child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()))
+    child.stdout?.on('data', (chunk: Buffer) => (stdout += chunk.toString()))
+    child.stderr?.on('data', (chunk: Buffer) => (stderr += chunk.toString()))
     child.on('error', reject)
     child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }))
-    child.stdin.end(input ?? '')
+    if (input !== undefined) {
+      // An exit before it reads shows as a non-zero code and stderr, which the callers report
+      child.stdin?.on('error', () => undefined)
+      child.stdin?.end(input)
+    }
   })
 
 export const readSecret = async (): Promise<string | null> => {

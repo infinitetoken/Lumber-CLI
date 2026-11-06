@@ -42,24 +42,25 @@ describe('formatLog', () => {
   })
 })
 
-const mockRuns: { args: string[]; input: string; reply: { code: number; stdout?: string; stderr?: string } }[] = []
+const mockRuns: { args: string[]; input: string | null; stdin?: string; reply: { code: number; stdout?: string; stderr?: string } }[] = []
 jest.mock('node:child_process', () => ({
-  spawn: (_cmd: string, args: string[]) => {
+  spawn: (_cmd: string, args: string[], options: { stdio: string[] }) => {
     const run = mockRuns.find((r) => r.args.join(' ') === args.join(' ') || (args[0] === '-i' && r.args[0] === '-i'))!
-    const child = Object.assign(new EventEmitter(), {
-      stdout: new EventEmitter(),
-      stderr: new EventEmitter(),
-      stdin: {
-        end: (input: string) => {
-          run.input = input
-          setImmediate(() => {
-            if (run.reply.stdout) child.stdout.emit('data', Buffer.from(run.reply.stdout))
-            if (run.reply.stderr) child.stderr.emit('data', Buffer.from(run.reply.stderr))
-            child.emit('close', run.reply.code)
-          })
-        }
+    run.stdin = options.stdio[0]
+    const exit = () =>
+      setImmediate(() => {
+        if (run.reply.stdout) child.stdout.emit('data', Buffer.from(run.reply.stdout))
+        if (run.reply.stderr) child.stderr.emit('data', Buffer.from(run.reply.stderr))
+        child.emit('close', run.reply.code)
+      })
+    const stdin = Object.assign(new EventEmitter(), {
+      end: (input: string) => {
+        run.input = input
+        exit()
       }
     })
+    const child = Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter(), stdin: run.stdin === 'pipe' ? stdin : null })
+    if (run.stdin !== 'pipe') exit()
     return child
   }
 }))
@@ -82,24 +83,28 @@ describe('keychain', () => {
   })
 
   it('reads the session back from base64', async () => {
-    mockRuns.push({ args: ['find-generic-password', '-s', 'Lumber CLI', '-a', 'session', '-w'], input: '', reply: { code: 0, stdout: `${Buffer.from('{"a":1}').toString('base64')}\n` } })
+    mockRuns.push({ args: ['find-generic-password', '-s', 'Lumber CLI', '-a', 'session', '-w'], input: null, reply: { code: 0, stdout: `${Buffer.from('{"a":1}').toString('base64')}\n` } })
     expect(await readSecret()).toBe('{"a":1}')
+    // Piping stdin to a command that never reads it raced its exit into an unhandled EPIPE
+    expect(mockRuns[0].stdin).toBe('ignore')
   })
 
   it('reads nothing when there is no item', async () => {
-    mockRuns.push({ args: ['find-generic-password', '-s', 'Lumber CLI', '-a', 'session', '-w'], input: '', reply: { code: 44 } })
+    mockRuns.push({ args: ['find-generic-password', '-s', 'Lumber CLI', '-a', 'session', '-w'], input: null, reply: { code: 44 } })
     expect(await readSecret()).toBeNull()
   })
 
   it('writes through stdin, never an argument', async () => {
-    mockRuns.push({ args: ['-i'], input: '', reply: { code: 0 } })
+    mockRuns.push({ args: ['-i'], input: null, reply: { code: 0 } })
     await writeSecret('{"token":"secret"}')
     expect(mockRuns[0].input).toContain(`-w ${Buffer.from('{"token":"secret"}').toString('base64')}\n`)
     expect(mockRuns[0].input).toMatch(/^add-generic-password -U -s "Lumber CLI" -a session/)
+    expect(mockRuns[0].stdin).toBe('pipe')
   })
 
   it("doesn't mind removing an item that isn't there", async () => {
-    mockRuns.push({ args: ['delete-generic-password', '-s', 'Lumber CLI', '-a', 'session'], input: '', reply: { code: 44 } })
+    mockRuns.push({ args: ['delete-generic-password', '-s', 'Lumber CLI', '-a', 'session'], input: null, reply: { code: 44 } })
     await expect(deleteSecret()).resolves.toBeUndefined()
+    expect(mockRuns[0].stdin).toBe('ignore')
   })
 })
