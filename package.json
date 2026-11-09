@@ -48,7 +48,7 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "verify": "npm run lint && npm test && npm run typecheck && npm run build",
-    "preversion": "npm run verify",
+    "preversion": "git pull --rebase && npm run verify",
     "version": "node scripts/server-json.cjs && git add server.json"
   },
   "prettier": "@infinitetoken/eslint-config/prettier",

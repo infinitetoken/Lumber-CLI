@@ -1,0 +1,77 @@
+# Keeps Formula/lumber.rb (this repo is also the Homebrew tap) on npm's latest lumber. After each Publish run, and on
+# demand (gh workflow run homebrew.yml), it points the formula at that tarball, has Homebrew install, test and audit it
+# on macOS and Linux, and commits it to main when the version changed. The formula needs the checksum of the tarball
+# npm serves, which only exists once it's published, hence a commit after each release: pull before the next one.
+name: Homebrew
+run-name: Homebrew formula
+
+on:
+  workflow_run:
+    workflows: [Publish]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
+
+jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@c262868c096d909fc278daa87ed9772967331ea3 # 2026.11.02.1
+
+      - name: Point the formula at npm's latest
+        run: bash scripts/formula.sh
+
+      # Tapped as people tap it (infinitetoken/lumber), from this checkout, so the formula is the one just written, and
+      # installed by its full name, as the README says, which is what has Homebrew trust it
+      - name: Install, test and audit it
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          taps="$(brew --repository)/Library/Taps/infinitetoken"
+          mkdir -p "$taps"
+          ln -s "$GITHUB_WORKSPACE" "$taps/homebrew-lumber"
+          brew install --formula infinitetoken/lumber/lumber
+          brew test infinitetoken/lumber/lumber
+          brew audit --strict --online --formula infinitetoken/lumber/lumber
+
+  commit:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Point the formula at npm's latest
+        run: bash scripts/formula.sh
+
+      - name: Commit it when it changed
+        run: |
+          if git diff --quiet -- Formula/lumber.rb; then echo "The formula is already on $(sed -nE 's|.*lumber-cli-(.+)\.tgz".*|\1|p' Formula/lumber.rb)"; exit 0; fi
+          version="$(sed -nE 's|.*lumber-cli-(.+)\.tgz".*|\1|p' Formula/lumber.rb)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Homebrew: lumber ${version}" -- Formula/lumber.rb
+          git push origin HEAD:main

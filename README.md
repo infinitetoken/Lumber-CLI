@@ -12,6 +12,18 @@ npm install -g @infinitetoken/lumber-cli
 
 The package is scoped: the unscoped `lumber` and `lumber-cli` on npm are someone else's.
 
+Or with Homebrew, on macOS or Linux. This repo is the tap:
+
+```bash
+brew tap infinitetoken/lumber https://github.com/infinitetoken/Lumber-CLI
+```
+
+```bash
+brew install infinitetoken/lumber/lumber
+```
+
+Naming it in full the first time is what has Homebrew trust the formula. Update with `brew upgrade lumber`.
+
 ## Signing in
 
 ```bash
