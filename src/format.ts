@@ -1,6 +1,7 @@
 import { DEFAULT_ACCENT, isValidColor, LogLevel, logLevelColors, logLevelNameToLevel } from '@infinitetoken/lumber-kit'
 import { Color, config, configure, Log as Logger, markup, Spinner, type SpinnerOptions } from 'termkit'
 
+import { THIS_COMPUTER } from './constants'
 import type { Log } from './logs'
 
 // The apps' palette (Lumber-Kit's): the level colors for info, warnings and errors, and the green of the connection
@@ -66,12 +67,15 @@ export const formatLevel = (level: Log['level']): string => Color.bold.hex(logLe
 const LEAD = ' '.repeat(26)
 const indent = (text: string, by: string) => text.split('\n').join(`\n${by}`)
 
+// For a name that starts a sentence: `This Mac reads ...`
+export const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
+
 // `2026-10-29 19:15:44 ERROR [Lumber-Test] message`, the app only when more than one is listed, and with `verbose`
 // the id, IDs, context and metadata under it
 export const formatLog = (log: Log, { showApp = false, appColor, verbose = false }: { showApp?: boolean; appColor?: string; verbose?: boolean } = {}): string => {
   const app = appColor ? appName(log.app, appColor, 'faint') : Color.faint(`[${log.app}]`)
   const head = [Color.faint(formatTime(log.time)), formatLevel(log.level), ...(showApp ? [app] : [])].join(' ')
-  const message = log.locked ? Color.faint('encrypted: this Mac has no key for this app') : indent(log.message ?? '', LEAD)
+  const message = log.locked ? Color.faint(`encrypted: ${THIS_COMPUTER} has no key for this app`) : indent(log.message ?? '', LEAD)
   if (!verbose) return `${head} ${message}`
   const fields: [string, unknown][] = [
     ['id', log.id],

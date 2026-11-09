@@ -1,7 +1,7 @@
 import { answerLinkCode, deliveryChecksOut, parseCode } from '../linkCode'
 
 // A request the apps' own code started (Lumber's exchangeVector.test.ts pins the same run, and checks this answer with
-// its verifyLinkAnswer), so this Mac's answer is one a device holding the account key accepts
+// its verifyLinkAnswer), so this computer's answer is one a device holding the account key accepts
 const PARTIES = { sid: 'W54dlsa804XUzhOteBDNxQ==', linkId: '347EFCE6-5E41-43C2-B653-722AAB3C4E88', userId: '5F6F1632-0000-4000-8000-000000000001' }
 const CODE = '4494554'
 const HOLDER_MESSAGE = 'zMKOcstRzwBkAiqSII7GuXHwbGMZjco1kw2xBy/89is='

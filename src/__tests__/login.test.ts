@@ -9,7 +9,8 @@ import { login, logout } from '../login'
 import { ACCOUNT_PRIVATE_KEY, ACCOUNT_PUBLIC_KEY } from './fixtures'
 
 let mockStored: string | null = null
-jest.mock('../keychain', () => ({
+jest.mock('../credentials', () => ({
+  ...jest.requireActual('../credentials'),
   readSecret: async () => mockStored,
   writeSecret: async (value: string) => {
     mockStored = value
@@ -137,7 +138,7 @@ const approvedWith =
   }
 
 describe('login', () => {
-  it('links this Mac from the code another device shows, and keeps the account key', async () => {
+  it('links this computer from the code another device shows, and keeps the account key', async () => {
     const calls = serve(linkRoutes(approvedWith(ACCOUNT_PRIVATE_KEY)))
     await finish(login())
     expect(JSON.parse(mockStored!)).toEqual({ userId: USER_ID, email: 'jay@example.com', token: 'jwt', privateKey: ACCOUNT_PRIVATE_KEY, color: '#60A5FA' })
@@ -200,7 +201,7 @@ describe('login', () => {
     expect(mockStored).toBeNull()
   })
 
-  // A key the server wrapped itself to this Mac carries no tag it could make: the secret came from the code
+  // A key the server wrapped itself to this computer carries no tag it could make: the secret came from the code
   it('saves nothing the showing device didn’t tag', async () => {
     serve(linkRoutes((publicKey) => ({ data: { id: LINK_ID, status: 'approved', encryptedKey: wrap(ACCOUNT_PRIVATE_KEY, publicKey) } })))
     await expect(finish(login())).rejects.toThrow(/didn't come from a device that showed the code/)

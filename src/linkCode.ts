@@ -5,10 +5,10 @@ import { hmac } from '@noble/hashes/hmac.js'
 import { sha256, sha512 } from '@noble/hashes/sha2.js'
 
 // The new device's half of linking by a 7-digit code, the apps' linkExchange.ts and keyCheck.ts (CPace over
-// ristretto255): a device holding the account key shows a code for this Mac's request; the code typed in here answers
-// it with a tag covering this Mac's one-off public key, which that device checks before wrapping the account key to it.
+// ristretto255): a device holding the account key shows a code for this computer's request; the code typed in here answers
+// it with a tag covering this computer's one-off public key, which that device checks before wrapping the account key to it.
 // The server carries both messages but never sees the code, so it can't swap the key, and it gets one guess per request.
-// The account key comes back tagged with the secret the code gave both sides, so the server can't hand this Mac a key
+// The account key comes back tagged with the secret the code gave both sides, so the server can't hand this computer a key
 // of its own either.
 // Node's crypto has no ristretto255 or hash to curve, hence noble here. linkCode.test.ts pins a run against the apps' code.
 
@@ -56,8 +56,8 @@ const randomScalar = (): bigint => {
 
 const base64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
 
-// This Mac's answer to the code shown for its request: the exchange's second message, and a tag over both messages and
-// this Mac's one-off public key under the secret the code gives. The secret stays here, to check the account key that
+// This computer's answer to the code shown for its request: the exchange's second message, and a tag over both messages and
+// this computer's one-off public key under the secret the code gives. The secret stays here, to check the account key that
 // comes back (deliveryChecksOut); only `answer` goes to the server. `scalar` is for tests.
 export const answerLinkCode = (parties: LinkParties, code: string, holderMessage: string, publicKey: string, scalar = randomScalar()): { answer: { claimantMessage: string; tag: string }; secret: string } => {
   const generator = ristretto255_hasher.hashToCurve(encode(`${code}|${parties.sid}|${bound(parties)}`), { DST })
@@ -71,6 +71,6 @@ export const answerLinkCode = (parties: LinkParties, code: string, holderMessage
   return { answer: { claimantMessage, tag }, secret: base64(key) }
 }
 
-// Whether the account key that came back was tagged with this Mac's secret, so by the device that showed the code and
+// Whether the account key that came back was tagged with this computer's secret, so by the device that showed the code and
 // not by the server, which never has it
 export const deliveryChecksOut = (parties: LinkParties, secret: string, holderMessage: string, claimantMessage: string, encryptedKey: string, tag: string): boolean => base64(hmac(sha256, Buffer.from(secret, 'base64'), encode(`${DST}|deliver|${parties.sid}|${bound(parties)}|${holderMessage}|${claimantMessage}|${encryptedKey}`))) === tag

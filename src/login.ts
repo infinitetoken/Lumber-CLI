@@ -3,9 +3,11 @@ import { hostname } from 'node:os'
 import type { DeviceLinkCreateBody, DeviceLinkCreatedRecord, DeviceLinkRecord, UserRecord } from '@infinitetoken/lumber-kit'
 import { Color, input } from 'termkit'
 
+import { THIS_COMPUTER } from './constants'
+import { storeName } from './credentials'
 import { generateKeyPair, publicKeyOf, unwrap } from './crypto'
 import { ApiError, UsageError } from './errors'
-import { lumberSpinner, say as log, useAccent } from './format'
+import { capitalize, lumberSpinner, say as log, useAccent } from './format'
 import { answerLinkCode, deliveryChecksOut, type LinkParties, parseCode } from './linkCode'
 import { clearSession, loadSession, request, saveSession } from './session'
 
@@ -29,7 +31,7 @@ const countdown = (ms: number) => {
   return Color.faint(`expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`)
 }
 
-// What this Mac's answer kept, to check the key that comes back
+// What this computer's answer kept, to check the key that comes back
 type Answered = { parties: LinkParties; holderMessage: string; claimantMessage: string; secret: string }
 
 // Sends the code typed in, asking again for a typo (the check digit catches one) or before any device shows a code for
@@ -56,7 +58,7 @@ const answer = async (token: string, me: UserRecord, linkId: string, publicKey: 
     const parties = { sid: link.sid, linkId, userId: me.id }
     const { answer: body, secret } = answerLinkCode(parties, code, link.holderMessage, publicKey)
     try {
-      // The answer alone: the secret never leaves this Mac
+      // The answer alone: the secret never leaves this computer
       await request(`/device-links/${linkId}/answer`, { method: 'POST', token, body })
       return { parties, holderMessage: link.holderMessage, claimantMessage: body.claimantMessage, secret }
     } catch (err) {
@@ -68,11 +70,11 @@ const answer = async (token: string, me: UserRecord, linkId: string, publicKey: 
   }
 }
 
-// Links this Mac as a device, as Link This Device does on a phone: the request carries the public half of a one-off
+// Links this computer as a device, as Link This Device does on a phone: the request carries the public half of a one-off
 // keypair; a device that has the account key shows a 7-digit code for it, typed in here; that device checks the answer,
-// whose tag covers this Mac's key, and only then wraps the account key to it, with a tag from the code's secret this
-// Mac checks. The server carries the exchange but never sees the code, so it can't choose the key the account key goes
-// to, nor hand this Mac a key of its own.
+// whose tag covers this computer's key, and only then wraps the account key to it, with a tag from the code's secret this
+// computer checks. The server carries the exchange but never sees the code, so it can't choose the key the account key goes
+// to, nor hand this computer a key of its own.
 const link = async (token: string, me: UserRecord): Promise<string> => {
   const pair = generateKeyPair()
   const deviceName = `Lumber CLI on ${hostname().replace(/\.local$/, '')}`
@@ -81,7 +83,7 @@ const link = async (token: string, me: UserRecord): Promise<string> => {
   const expiresAt = new Date(created.expiresAt).getTime()
 
   say()
-  say('To read your logs, this Mac needs your account key from a device that has it.')
+  say(`To read your logs, ${THIS_COMPUTER} needs your account key from a device that has it.`)
   say(`Open Lumber on your phone or Mac. It asks to link ${Color.bold(deviceName)}: tap ${Color.bold('Show Code')} there`)
   say(`(or open ${Color.bold('Account > Link another device')}), and type the code it shows. The request lasts 10 minutes.`)
   say()
@@ -147,7 +149,7 @@ export const login = async (): Promise<void> => {
   }
   if (!me.publicKey) throw new UsageError('This account has no account key yet. Open Lumber on your phone or Mac first: it sets one up.')
 
-  // The same person signing in again keeps the key this Mac was linked with, unless the account's key was replaced
+  // The same person signing in again keeps the key this computer was linked with, unless the account's key was replaced
   if (stored?.userId === me.id && sameKey(stored.privateKey, me.publicKey)) {
     await saveSession({ userId: me.id, email: me.email, token, privateKey: stored.privateKey, color: me.color ?? null })
     useAccent(me.color)
@@ -158,12 +160,12 @@ export const login = async (): Promise<void> => {
   const privateKey = await link(token, me)
   await saveSession({ userId: me.id, email: me.email, token, privateKey, color: me.color ?? null })
   useAccent(me.color)
-  log.succeed(`Linked. This Mac can read ${me.email}'s logs: try ${Color.bold('lumber apps')}`)
+  log.succeed(`Linked. ${capitalize(THIS_COMPUTER)} can read ${me.email}'s logs: try ${Color.bold('lumber apps')}`)
 }
 
 export const logout = async (): Promise<void> => {
   const stored = await loadSession()
   await clearSession()
-  if (stored) log.succeed(`Signed out ${stored.email} and removed this Mac's account key from the Keychain. Signing in again needs a new link.`)
+  if (stored) log.succeed(`Signed out ${stored.email} and removed ${THIS_COMPUTER}'s account key from ${storeName()}. Signing in again needs a new link.`)
   else log.info('Not signed in.')
 }

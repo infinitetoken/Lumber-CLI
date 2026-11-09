@@ -10,3 +10,50 @@ on:
 jobs:
   quality:
     uses: infinitetoken/Workflows/.github/workflows/npm-ci.yml@v1
+
+  # Each system keeps the session in its own credential store, so the tests run on all three, and
+  # credentialStore.test.ts (LUMBER_STORE_TEST) writes, reads and removes a test item in the real one
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      LUMBER_STORE_TEST: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # A runner has no desktop session, so no Secret Service: the CLI has to say so, and never fall back to a file
+      - name: Say plainly when there's no Secret Service
+        if: runner.os == 'Linux'
+        run: |
+          if out=$(node dist/cli.mjs status 2>&1); then echo "status passed with no Secret Service"; exit 1; fi
+          echo "$out"
+          echo "$out" | grep -q 'none is running here'
+
+      # A GNOME Keyring on a D-Bus session of its own, unlocked (created) with a throwaway password
+      - name: Test against the Secret Service
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnome-keyring dbus
+          dbus-run-session -- bash -c 'echo -n ci | gnome-keyring-daemon --unlock --components=secrets > /dev/null && npm test'
+
+      - name: Test against the ${{ runner.os == 'macOS' && 'Keychain' || 'Credential Manager' }}
+        if: runner.os != 'Linux'
+        run: npm test
+
+      - name: Run the built CLI
+        run: node dist/cli.mjs --version

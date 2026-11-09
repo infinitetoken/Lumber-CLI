@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { checksForUpdates, isNewer, startUpdateCheck, type UpdateState } from '../update'
+import { cacheDir, checksForUpdates, installedWithHomebrew, isNewer, startUpdateCheck, updateCommand, updateNotice, type UpdateState } from '../update'
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2026, 10, 6, 12)
@@ -87,6 +87,37 @@ describe('startUpdateCheck', () => {
   it('reads a broken saved file as nothing saved', async () => {
     writeFileSync(file, 'not json')
     expect(await startUpdateCheck({ version: '0.2.1', file, now: () => NOW, fetch: npmSays('0.3.0') }).finish()).toContain('0.3.0 is out')
+  })
+})
+
+describe('cacheDir', () => {
+  it("is each system's own cache folder", () => {
+    expect(cacheDir('darwin', {}, '/Users/jay')).toBe(join('/Users/jay', 'Library', 'Caches'))
+    expect(cacheDir('win32', { LOCALAPPDATA: 'C:\\Users\\jay\\AppData\\Local' }, 'C:\\Users\\jay')).toBe('C:\\Users\\jay\\AppData\\Local')
+    expect(cacheDir('linux', {}, '/home/jay')).toBe(join('/home/jay', '.cache'))
+    expect(cacheDir('linux', { XDG_CACHE_HOME: '/var/cache/jay' }, '/home/jay')).toBe('/var/cache/jay')
+    // The spec ignores a relative one
+    expect(cacheDir('linux', { XDG_CACHE_HOME: 'cache' }, '/home/jay')).toBe(join('/home/jay', '.cache'))
+  })
+})
+
+describe('updateCommand', () => {
+  it('updates with brew when Homebrew installed it, and npm otherwise', () => {
+    const prefix = mkdtempSync(join(tmpdir(), 'lumber-brew-'))
+    const cellar = join(prefix, 'Cellar', 'lumber', '0.3.0', 'libexec', 'lib', 'node_modules', '@infinitetoken', 'lumber-cli', 'dist')
+    mkdirSync(cellar, { recursive: true })
+    writeFileSync(join(cellar, 'cli.mjs'), '')
+    expect(installedWithHomebrew(join(cellar, 'cli.mjs'))).toBe(true)
+    // The bin Homebrew links is followed to where it lives (Homebrew is never on Windows, where a link needs an admin)
+    if (process.platform !== 'win32') {
+      mkdirSync(join(prefix, 'bin'))
+      symlinkSync(join(cellar, 'cli.mjs'), join(prefix, 'bin', 'lumber'))
+      expect(installedWithHomebrew(join(prefix, 'bin', 'lumber'))).toBe(true)
+    }
+    expect(installedWithHomebrew(join(tmpdir(), 'nowhere', 'lumber'))).toBe(false)
+    expect(updateCommand(true)).toBe('brew upgrade lumber')
+    expect(updateCommand(false)).toBe('npm install -g @infinitetoken/lumber-cli')
+    expect(updateNotice('0.3.0', '0.2.2', 'brew upgrade lumber')).toContain('Update with brew upgrade lumber')
   })
 })
 

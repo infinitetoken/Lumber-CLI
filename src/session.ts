@@ -1,8 +1,8 @@
 import type { ApiResponse, UserRecord } from '@infinitetoken/lumber-kit'
 
 import { API_URL } from './constants'
+import { deleteSecret, readSecret, writeSecret } from './credentials'
 import { ApiError, NotSignedInError } from './errors'
-import { deleteSecret, readSecret, writeSecret } from './keychain'
 
 // The token is null once signed out by the API; the account key stays, so signing in again as the same person
 // needs no new link. `color` is the account's accent, kept from /me at sign-in and each daily refresh.
@@ -48,7 +48,7 @@ export const request = async <T>(path: string, { method = 'GET', body, token }: 
 }
 
 // Tokens last 30 days from their last refresh, so trading one over a day old for a fresh one, as the apps do
-// (useSessionKeeper), means a session only ends on a Mac where lumber goes unused for 30 days.
+// (useSessionKeeper), means a session only ends on a computer where lumber goes unused for 30 days.
 const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000
 
 export const tokenNeedsRefresh = (token: string, now = Date.now()): boolean => {
@@ -65,7 +65,7 @@ export type Client = {
   get: <T>(path: string, params?: Params) => Promise<ApiResponse<T>>
 }
 
-// The signed-in session, read from the Keychain each time, so an MCP server that outlives a `lumber login` uses the
+// The signed-in session, read from the credential store each time, so an MCP server that outlives a `lumber login` uses the
 // new one
 export const openClient = async (): Promise<Client> => {
   const stored = await loadSession()

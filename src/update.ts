@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 
 import { Color } from 'termkit'
 
@@ -16,7 +16,27 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // When it last asked, what npm said, and when it last said so here
 export type UpdateState = { checkedAt?: number; latest?: string; notifiedAt?: number }
 
-export const updateFile = (): string => join(homedir(), ...(process.platform === 'darwin' ? ['Library', 'Caches'] : ['.cache']), 'lumber-cli', 'update.json')
+// Where each system keeps caches: ~/Library/Caches on macOS, %LOCALAPPDATA% on Windows, and $XDG_CACHE_HOME or
+// ~/.cache on Linux
+export const cacheDir = (platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env, home = homedir()): string => {
+  if (platform === 'darwin') return join(home, 'Library', 'Caches')
+  if (platform === 'win32') return env.LOCALAPPDATA || join(home, 'AppData', 'Local')
+  return env.XDG_CACHE_HOME && isAbsolute(env.XDG_CACHE_HOME) ? env.XDG_CACHE_HOME : join(home, '.cache')
+}
+
+export const updateFile = (): string => join(cacheDir(), 'lumber-cli', 'update.json')
+
+// Homebrew keeps what it installs in its Cellar, so a lumber running from there updates with brew: installing it again
+// with npm would only add a second copy
+export const installedWithHomebrew = (script = process.argv[1]): boolean => {
+  try {
+    return /[\\/]Cellar[\\/]lumber[\\/]/.test(realpathSync(script))
+  } catch {
+    return false
+  }
+}
+
+export const updateCommand = (homebrew = installedWithHomebrew()): string => (homebrew ? 'brew upgrade lumber' : `npm install -g ${PACKAGE}`)
 
 const readState = (file: string): UpdateState => {
   try {
@@ -50,7 +70,7 @@ export const isNewer = (latest: string, current: string): boolean => {
   return false
 }
 
-export const updateNotice = (latest: string, current: string): string => `${Color.hex(getAccent())('↑')} lumber ${Color.bold(latest)} is out (you have ${current}). Update with ${Color.bold(`npm install -g ${PACKAGE}`)}`
+export const updateNotice = (latest: string, current: string, command = updateCommand()): string => `${Color.hex(getAccent())('↑')} lumber ${Color.bold(latest)} is out (you have ${current}). Update with ${Color.bold(command)}`
 
 type CheckOptions = { version: string; file?: string; now?: () => number; fetch?: typeof fetch }
 

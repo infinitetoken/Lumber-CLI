@@ -2,9 +2,9 @@ import type { UserRecord } from '@infinitetoken/lumber-kit'
 import { Color, Program, type Spinner, Table } from 'termkit'
 
 import { type App, loadApps, pickApps } from './apps'
-import { VERSION } from './constants'
-import { ApiError, NotSignedInError, UsageError } from './errors'
-import { appName, formatJson, formatLog, formatTime, lumberSpinner, say, THEME, type Tone, toned, useAccent } from './format'
+import { THIS_COMPUTER, VERSION } from './constants'
+import { ApiError, NotSignedInError, StoreUnavailableError, UsageError } from './errors'
+import { appName, capitalize, formatJson, formatLog, formatTime, lumberSpinner, say, THEME, type Tone, toned, useAccent } from './format'
 import { login, logout } from './login'
 import { DEFAULT_SCAN, type Log, parseLevels, searchLogs } from './logs'
 import { serveMcp } from './mcp'
@@ -54,8 +54,8 @@ const status = async () => {
   }
   const readable = apps.filter((app) => app.key).length
   say.succeed(`Signed in as ${Color.bold(me.email)}`)
-  if (readable === apps.length) say.info(`This Mac reads all ${plural(apps.length, 'app')}`)
-  else say.warn(`This Mac reads ${readable} of ${plural(apps.length, 'app')}: the rest wait for someone who has their keys to share them`)
+  if (readable === apps.length) say.info(`${capitalize(THIS_COMPUTER)} reads all ${plural(apps.length, 'app')}`)
+  else say.warn(`${capitalize(THIS_COMPUTER)} reads ${readable} of ${plural(apps.length, 'app')}: the rest wait for someone who has their keys to share them`)
 }
 
 const apps = async ({ json }: { json?: boolean }) => {
@@ -69,7 +69,7 @@ const apps = async ({ json }: { json?: boolean }) => {
     list.map((app) => ({
       name: appName(app.name, app.color, 'bold'),
       id: Color.faint(app.id),
-      notes: [!app.key && Color.hex(THEME.warn)('locked: no key on this Mac'), app.retentionDays && `kept ${app.retentionDays} days`, app.logsCappedUntil && new Date(app.logsCappedUntil) > new Date() && Color.hex(THEME.error)(`monthly limit reached until ${formatTime(app.logsCappedUntil)}`)].filter(Boolean).join(' · ')
+      notes: [!app.key && Color.hex(THEME.warn)(`locked: no key on ${THIS_COMPUTER}`), app.retentionDays && `kept ${app.retentionDays} days`, app.logsCappedUntil && new Date(app.logsCappedUntil) > new Date() && Color.hex(THEME.error)(`monthly limit reached until ${formatTime(app.logsCappedUntil)}`)].filter(Boolean).join(' · ')
     })),
     {
       columns: [
@@ -159,18 +159,21 @@ const tail = async (options: ListOptions & { quiet?: boolean }) => {
 
 const listOptions = [Program.option('l', 'level', '<level>', 'A level and above (warn), or exact levels (info,warn): debug, info, warn, error, fatal'), Program.option('g', 'grep', '<text>', 'Only logs containing this text, ignoring case'), Program.option('v', 'verbose', null, 'Show ids, context and metadata under each log'), Program.option(null, 'json', null, 'One JSON object per log, for scripts and agents')]
 
+// npm installs lumber on Windows as a .cmd file, which an agent can only start through cmd
+const MCP_ADD = `claude mcp add lumber -- ${process.platform === 'win32' ? 'cmd /c ' : ''}lumber mcp`
+
 const program = Program.command('lumber')
   .version(VERSION)
-  .description('Read your Lumber logs, decrypted on this Mac. Apps are names (any case) or ids; none means every app. Add Lumber to Claude Code with: claude mcp add lumber -- lumber mcp')
+  .description(`Read your Lumber logs, decrypted on ${THIS_COMPUTER}. Apps are names (any case) or ids; none means every app. Add Lumber to Claude Code with: ${MCP_ADD}`)
   .commands([
     Program.command('login')
-      .description('Sign in and link this Mac (approved from a device that has your account key)')
+      .description(`Sign in and link ${THIS_COMPUTER} (approved from a device that has your account key)`)
       .action(() => login()),
     Program.command('logout')
-      .description("Sign out and remove this Mac's account key")
+      .description(`Sign out and remove ${THIS_COMPUTER}'s account key`)
       .action(() => logout()),
     Program.command('status')
-      .description("Who's signed in and which apps this Mac can read")
+      .description(`Who's signed in and which apps ${THIS_COMPUTER} can read`)
       .action(() => status()),
     Program.command('apps')
       .description('Your apps')
@@ -220,7 +223,7 @@ const run = async (argv: string[]): Promise<number> => {
     fail(message)
     // A mistake on the command line, ours or termkit's own (an unknown command or option, a value it can't read)
     if (err instanceof UsageError || err instanceof SyntaxError || /^(Unknown|Missing|Invalid) /.test(message)) return 2
-    if (err instanceof NotSignedInError || err instanceof ApiError) return 1
+    if (err instanceof NotSignedInError || err instanceof ApiError || err instanceof StoreUnavailableError) return 1
     if (err instanceof Error && err.stack) process.stderr.write(`${err.stack}\n`)
     return 1
   }

@@ -3,7 +3,7 @@ import { openClient, request } from '../session'
 import { ACCOUNT_PRIVATE_KEY } from './fixtures'
 
 let mockStored: string | null = null
-jest.mock('../keychain', () => ({
+jest.mock('../credentials', () => ({
   readSecret: async () => mockStored,
   writeSecret: async (value: string) => {
     mockStored = value

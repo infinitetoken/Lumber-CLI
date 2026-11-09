@@ -1,10 +1,11 @@
 import { runCommand } from '../commands'
+import { THIS_COMPUTER } from '../constants'
 import { NotSignedInError } from '../errors'
 import { getAccent } from '../format'
 import { loadSession, openClient, saveSession } from '../session'
 import { appRecord, fakeClient, logRecord, page } from './fixtures'
 
-// Never the real Keychain: runCommand reads the session for your accent before anything else
+// Never the real credential store: runCommand reads the session for your accent before anything else
 jest.mock('../session', () => ({ ...jest.requireActual('../session'), openClient: jest.fn(), loadSession: jest.fn(async () => null), saveSession: jest.fn(async () => undefined) }))
 jest.mock('../mcp', () => ({ serveMcp: jest.fn(async () => undefined) }))
 
@@ -63,7 +64,7 @@ describe('lumber', () => {
   it('lists apps, and as JSON', async () => {
     jest.mocked(openClient).mockResolvedValue(fakeClient({ '/apps': twoApps }))
     expect(await runCommand(['apps'])).toBe(0)
-    expect(stdout).toMatch(/Locked .*locked: no key on this Mac · kept 7 days/)
+    expect(stdout).toMatch(new RegExp(`Locked .*locked: no key on ${THIS_COMPUTER} · kept 7 days`))
     stdout = ''
     expect(await runCommand(['apps', '--json'])).toBe(0)
     expect(
@@ -74,7 +75,7 @@ describe('lumber', () => {
     ).toEqual(['Locked', 'Lumber-Test'])
   })
 
-  it('says who is signed in and what this Mac reads, taking up a new accent', async () => {
+  it('says who is signed in and what this computer reads, taking up a new accent', async () => {
     jest.mocked(openClient).mockResolvedValue(fakeClient({ '/apps': twoApps, '/me': () => ({ data: { email: 'jay@example.com', color: '#60A5FA' }, metadata: { requestId: 'r', durationMs: 1 } }) }))
     expect(await runCommand(['status'])).toBe(0)
     expect(stdout).toMatch(/Signed in as jay@example.com/)

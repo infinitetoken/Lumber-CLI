@@ -4,8 +4,8 @@ import { unwrap } from './crypto'
 import { UsageError } from './errors'
 import type { Client } from './session'
 
-// An app with its key unwrapped, or null where this Mac can't read it: the server holds no copy for this person yet
-// (Lumber's key sharing hasn't reached them), or the copy is for an account key this Mac doesn't have
+// An app with its key unwrapped, or null where this computer can't read it: the server holds no copy for this person yet
+// (Lumber's key sharing hasn't reached them), or the copy is for an account key this computer doesn't have
 export type App = {
   id: string
   name: string

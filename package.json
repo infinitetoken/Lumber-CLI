@@ -10,8 +10,14 @@
     "lumber",
     "mcp",
     "model-context-protocol",
+    "ai-agents",
+    "claude",
     "tail"
   ],
+  "homepage": "https://lumber.infinitetoken.com/docs/cli",
+  "bugs": {
+    "url": "https://github.com/infinitetoken/Lumber-CLI/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/infinitetoken/lumber-cli.git"
@@ -42,12 +48,14 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "verify": "npm run lint && npm test && npm run typecheck && npm run build",
-    "preversion": "npm run verify"
+    "preversion": "npm run verify",
+    "version": "node scripts/server-json.cjs && git add server.json"
   },
   "prettier": "@infinitetoken/eslint-config/prettier",
   "dependencies": {
-    "@infinitetoken/lumber-kit": "^0.6.0",
+    "@infinitetoken/lumber-kit": "^0.7.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@napi-rs/keyring": "^2.1.2",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "socket.io-client": "^4.8.4",
@@ -59,8 +67,8 @@
     "@infinitetoken/jest-config": "^0.5.2",
     "@infinitetoken/tsconfig": "^0.6.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.9.9",
-    "eslint": "^10.13.0",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
     "jest": "^30.5.2",
     "prettier": "^3.9.10",
     "tsup": "^8.5.1",
@@ -71,5 +79,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "mcpName": "com.infinitetoken/lumber"
 }

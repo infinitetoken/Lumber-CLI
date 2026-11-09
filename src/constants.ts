@@ -4,3 +4,6 @@ export const SOCKET_URL = process.env.LUMBER_SOCKET_URL ?? 'https://socket.lumbe
 
 // Set at build time from package.json (tsup.config.cjs)
 export const VERSION = process.env.LUMBER_CLI_VERSION ?? '0.0.0'
+
+// What the messages call the machine lumber runs on
+export const THIS_COMPUTER = process.platform === 'darwin' ? 'this Mac' : 'this computer'

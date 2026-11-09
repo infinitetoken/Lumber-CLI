@@ -27,7 +27,7 @@ export type TailOptions = {
 
 // Follows new logs: over the socket for apps whose team's plan streams them live (Dev and up), by asking the API every
 // few seconds for the rest (Hobby, or every app while the socket can't connect), and after any gap (a dropped
-// connection, a sleeping Mac) by asking for everything since the newest log seen.
+// connection, a sleeping laptop) by asking for everything since the newest log seen.
 export const followLogs = (client: Client, { apps, levels, text, since, seen: shown = [], onLog, onStatus, onError }: TailOptions): (() => void) => {
   const byId = new Map(apps.map((app) => [app.id, app]))
   const seen = new Set(shown)

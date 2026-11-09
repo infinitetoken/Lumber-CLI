@@ -1,8 +1,8 @@
 # @infinitetoken/lumber-cli
 
-Read your [Lumber](https://lumber.infinitetoken.com) logs from the terminal, and let an AI agent read them over MCP. Logs are decrypted on your Mac with your own account key, so Lumber's servers still can't read them.
+Read your [Lumber](https://lumber.infinitetoken.com) logs from the terminal, and let an AI agent read them over MCP. Logs are decrypted on your computer with your own account key, so Lumber's servers still can't read them.
 
-macOS only for now. It reads; it never changes anything in Lumber.
+Runs on macOS, Windows and Linux. It reads; it never changes anything in Lumber.
 
 ## Installation
 
@@ -18,14 +18,20 @@ The package is scoped: the unscoped `lumber` and `lumber-cli` on npm are someone
 lumber login
 ```
 
-Signs in with your Lumber email and password, then links this Mac the way a new phone links: open Lumber on a phone or Mac that already has your account key (your phone gets a notification, and the Mac app asks when you switch to it, or open Account > Link another device), tap Show Code, and type the 7-digit code at the `Code` prompt. That device checks the code and sends your account key. The request lasts 10 minutes, and a wrong code ends it. The other device needs an up-to-date Lumber app.
+Signs in with your Lumber email and password, then links this computer the way a new phone links: open Lumber on a phone or Mac that already has your account key (your phone gets a notification, and the Mac app asks when you switch to it, or open Account > Link another device), tap Show Code, and type the 7-digit code at the `Code` prompt. That device checks the code and sends your account key. The request lasts 10 minutes, and a wrong code ends it. The other device needs an up-to-date Lumber app.
 
-The session and your account key are kept in your login keychain (the "Lumber CLI" item). The session renews itself each day you use it, so it only ends after 30 days without running `lumber`; signing in again then, as the same person, needs no new link. `lumber logout` removes both.
+The session and your account key are kept in your system's own credential store, never in a file:
+
+- macOS: your login keychain, the "Lumber CLI" item.
+- Windows: Credential Manager, the generic credential `session.Lumber CLI`.
+- Linux: the Secret Service, which GNOME Keyring and KWallet provide, the "Lumber CLI" item. A desktop session has one; on a server or over SSH with none running, `lumber` says so and stops.
+
+The session renews itself each day you use it, so it only ends after 30 days without running `lumber`; signing in again then, as the same person, needs no new link. `lumber logout` removes both.
 
 ## Commands
 
 ```bash
-lumber status                          # who's signed in, which apps this Mac can read
+lumber status                          # who's signed in, which apps this computer can read
 lumber apps                            # your apps
 lumber logs                            # the newest 100 logs from every app, oldest at the bottom
 lumber logs Lumber-Test -l error -s 2h # one app's errors and fatals from the last two hours
@@ -55,7 +61,13 @@ Claude Code:
 claude mcp add lumber -- lumber mcp
 ```
 
-Claude Desktop, in its `claude_desktop_config.json` (use the full path `which lumber` prints, since the app doesn't read your shell's PATH):
+On Windows, npm installs `lumber` as a `.cmd` file, which an agent can only start through `cmd`:
+
+```bash
+claude mcp add lumber -- cmd /c lumber mcp
+```
+
+Claude Desktop, in its `claude_desktop_config.json` (on macOS and Linux, use the full path `which lumber` prints, since the app doesn't read your shell's PATH):
 
 ```json
 {
@@ -65,9 +77,19 @@ Claude Desktop, in its `claude_desktop_config.json` (use the full path `which lu
 }
 ```
 
+On Windows:
+
+```json
+{
+  "mcpServers": {
+    "lumber": { "command": "cmd", "args": ["/c", "lumber", "mcp"] }
+  }
+}
+```
+
 Tools:
 
-- `list_apps`: your apps, and whether this Mac can read each one.
+- `list_apps`: your apps, and whether this computer can read each one.
 - `search_logs`: the newest logs matching apps, a level, a time range and text.
 - `wait_for_logs`: waits for new logs (errors and fatals unless told otherwise) and returns them grouped by message, with a `next_after` to pass back, so an agent can watch in a loop without missing or repeating any.
 - `list_notes`: what people wrote about an app's logs, with who wrote it.
@@ -84,13 +106,13 @@ Log messages, context and metadata are written by your app and the people using 
 
 ## How it stays private
 
-Each app's logs are encrypted with its own key before they leave your servers (AES-256-GCM). The server keeps a copy of each app key wrapped to each person's account key, which it can't unwrap. Linking hands this Mac your account key, wrapped by the approving device to a key this Mac made for the link; the code you scan carries that key, so the server never chooses where your account key goes. Then each command fetches the ciphertext and decrypts it here.
+Each app's logs are encrypted with its own key before they leave your servers (AES-256-GCM). The server keeps a copy of each app key wrapped to each person's account key, which it can't unwrap. Linking hands this computer your account key, wrapped by the approving device to a key this computer made for the link. The code you type ties that key to the link, and the account key comes back tagged with a secret only the code gives, so the server can neither choose where your account key goes nor hand this computer a key of its own. Then each command fetches the ciphertext and decrypts it here.
 
 ## Requirements
 
-- macOS, for the Keychain. On other systems `lumber` says so; Linux and Windows are planned.
+- macOS, Windows, or Linux with a Secret Service (GNOME Keyring or KWallet).
 - Node 20 or later.
-- A Lumber account, and a phone or Mac where Lumber already has your account key, to show the code that links this Mac.
+- A Lumber account, and a phone or Mac where Lumber already has your account key, to show the code that links this computer.
 
 ## Publishing
 

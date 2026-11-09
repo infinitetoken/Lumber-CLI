@@ -24,7 +24,7 @@ export const parseLevels = (value: string | undefined): number[] | undefined => 
   return [...new Set(levels)].sort()
 }
 
-// A log as this Mac reads it. `message` is null and `locked` true when this Mac has no key for its app.
+// A log as this computer reads it. `message` is null and `locked` true when this computer has no key for its app.
 export type Log = {
   id: string
   app: string
