@@ -44,7 +44,8 @@ describe('lumber', () => {
   it('lists its commands with no command', async () => {
     expect(await runCommand([])).toBe(0)
     expect(stdout).toMatch(/logs \[apps\.\.\.\]/)
-    expect(stdout).toMatch(/claude mcp add lumber -- lumber mcp/)
+    // On Windows npm installs lumber as a .cmd file, which an agent can only start through cmd
+    expect(stdout).toContain(process.platform === 'win32' ? 'claude mcp add lumber -- cmd /c lumber mcp' : 'claude mcp add lumber -- lumber mcp')
   })
 
   it('exits 2 for a mistake on the command line', async () => {
