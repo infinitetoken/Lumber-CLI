@@ -1,8 +1,8 @@
 class Lumber < Formula
   desc "Read end-to-end encrypted Lumber logs in the terminal and from AI agents (MCP)"
   homepage "https://lumber.infinitetoken.com/docs/cli"
-  url "https://registry.npmjs.org/@infinitetoken/lumber-cli/-/lumber-cli-0.3.0.tgz"
-  sha256 "e18d6b969a4ec4a61894f6eee11a506dd3fb2086f2fdbef41ed1a42034c1d19d"
+  url "https://registry.npmjs.org/@infinitetoken/lumber-cli/-/lumber-cli-0.4.0.tgz"
+  sha256 "34ef244770585f437426844378575750639f45ec2701e7933b464768b18c6f7c"
   license "MIT"
 
   depends_on "node"
