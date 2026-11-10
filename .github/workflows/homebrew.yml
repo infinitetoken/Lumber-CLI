@@ -38,6 +38,8 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@c262868c096d909fc278daa87ed9772967331ea3 # 2026.11.02.1
 
       - name: Point the formula at npm's latest
+        env:
+          LUMBER_VERSION: ${{ github.event.workflow_run.head_branch }}
         run: bash scripts/formula.sh
 
       # Tapped as people tap it (infinitetoken/lumber), from this checkout, so the formula is the one just written, and
@@ -65,6 +67,8 @@ jobs:
           ref: main
 
       - name: Point the formula at npm's latest
+        env:
+          LUMBER_VERSION: ${{ github.event.workflow_run.head_branch }}
         run: bash scripts/formula.sh
 
       # scoop.yml commits after the same release, so a push can find main moved on: take that and push again

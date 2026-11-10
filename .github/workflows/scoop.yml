@@ -51,7 +51,8 @@ jobs:
           ./install-scoop.ps1 -RunAsAdmin
           $shims = Join-Path $HOME 'scoop\shims'
           $env:PATH = "$shims;$env:PATH"
-          scoop bucket add lumber $env:GITHUB_WORKSPACE
+          # Scoop takes a bucket only by a Git URL, so the checkout goes in as a file:/// one
+          scoop bucket add lumber ([Uri]$env:GITHUB_WORKSPACE).AbsoluteUri
           scoop install lumber/lumber
           if (-not (Get-Command lumber -ErrorAction SilentlyContinue)) { throw "Scoop didn't install lumber" }
           Add-Content -Path $env:GITHUB_PATH -Value $shims
