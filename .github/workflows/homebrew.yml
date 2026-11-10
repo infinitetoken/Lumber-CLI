@@ -67,6 +67,7 @@ jobs:
       - name: Point the formula at npm's latest
         run: bash scripts/formula.sh
 
+      # scoop.yml commits after the same release, so a push can find main moved on: take that and push again
       - name: Commit it when it changed
         run: |
           if git diff --quiet -- Formula/lumber.rb; then echo "The formula is already on $(sed -nE 's|.*lumber-cli-(.+)\.tgz".*|\1|p' Formula/lumber.rb)"; exit 0; fi
@@ -74,4 +75,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "Homebrew: lumber ${version}" -- Formula/lumber.rb
-          git push origin HEAD:main
+          for _ in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && exit 0; sleep 5; done
+          exit 1

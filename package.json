@@ -37,7 +37,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "clean": "rm -rf dist",
+    "build:binary": "node scripts/sea.mjs",
+    "clean": "rm -rf dist build release",
     "fix": "eslint --fix",
     "lint": "eslint",
     "prepublishOnly": "npm run build",

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { cacheDir, checksForUpdates, installedWithHomebrew, isNewer, startUpdateCheck, updateCommand, updateNotice, type UpdateState } from '../update'
+import { cacheDir, checksForUpdates, howInstalled, installedWithHomebrew, isNewer, startUpdateCheck, updateHint, updateNotice, type UpdateState } from '../update'
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2026, 10, 6, 12)
@@ -101,7 +101,7 @@ describe('cacheDir', () => {
   })
 })
 
-describe('updateCommand', () => {
+describe('updateHint', () => {
   it('updates with brew when Homebrew installed it, and npm otherwise', () => {
     const prefix = mkdtempSync(join(tmpdir(), 'lumber-brew-'))
     const cellar = join(prefix, 'Cellar', 'lumber', '0.3.0', 'libexec', 'lib', 'node_modules', '@infinitetoken', 'lumber-cli', 'dist')
@@ -115,9 +115,25 @@ describe('updateCommand', () => {
       expect(installedWithHomebrew(join(prefix, 'bin', 'lumber'))).toBe(true)
     }
     expect(installedWithHomebrew(join(tmpdir(), 'nowhere', 'lumber'))).toBe(false)
-    expect(updateCommand(true)).toBe('brew upgrade lumber')
-    expect(updateCommand(false)).toBe('npm install -g @infinitetoken/lumber-cli')
-    expect(updateNotice('0.3.0', '0.2.2', 'brew upgrade lumber')).toContain('Update with brew upgrade lumber')
+    expect(howInstalled(false, process.execPath, join(cellar, 'cli.mjs'))).toBe('homebrew')
+    expect(howInstalled(false, process.execPath, join(tmpdir(), 'nowhere', 'lumber'))).toBe('npm')
+    expect(updateHint('homebrew')).toBe('Update with brew upgrade lumber')
+    expect(updateHint('npm')).toBe('Update with npm install -g @infinitetoken/lumber-cli')
+    expect(updateNotice('0.3.0', '0.2.2', 'homebrew')).toContain('Update with brew upgrade lumber')
+  })
+
+  it('tells the standalone lumber how Scoop or winget installed it, or where to download it', () => {
+    expect(howInstalled(true, 'C:\\Users\\jay\\scoop\\apps\\lumber\\0.4.0\\lumber.exe')).toBe('scoop')
+    expect(howInstalled(true, 'C:\\ProgramData\\scoop\\apps\\lumber\\current\\lumber.exe')).toBe('scoop')
+    expect(howInstalled(true, 'C:\\Users\\jay\\AppData\\Local\\Microsoft\\WinGet\\Packages\\InfiniteToken.LumberCLI_Microsoft.Winget.Source_8wekyb3d8bbwe\\lumber.exe')).toBe('winget')
+    expect(howInstalled(true, 'C:\\Program Files\\WinGet\\Packages\\InfiniteToken.LumberCLI_Microsoft.Winget.Source_8wekyb3d8bbwe\\lumber.exe')).toBe('winget')
+    expect(howInstalled(true, 'C:\\Tools\\lumber.exe')).toBe('download')
+    expect(howInstalled(true, '/usr/local/bin/lumber')).toBe('download')
+    // Even from a Homebrew-looking place: only npm's lumber is ever in the Cellar
+    expect(howInstalled(true, '/opt/homebrew/Cellar/lumber/0.4.0/bin/lumber')).toBe('download')
+    expect(updateHint('scoop')).toBe('Update with scoop update lumber')
+    expect(updateHint('winget')).toBe('Update with winget upgrade InfiniteToken.LumberCLI')
+    expect(updateHint('download')).toBe('Download it from https://github.com/infinitetoken/Lumber-CLI/releases/latest')
   })
 })
 

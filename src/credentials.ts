@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 
 import { StoreUnavailableError } from './errors'
+import { capitalize } from './format'
 
 // The session (token and account key) is one secret in the system's own credential store, under the same names on
 // each: the Keychain on macOS, Windows Credential Manager, and the Secret Service (GNOME Keyring, KWallet) on Linux.
@@ -108,6 +109,29 @@ export const storeFor = (platform: NodeJS.Platform, service = SERVICE, account =
   if (platform === 'darwin') return keychainStore(service, account)
   if (platform === 'win32' || platform === 'linux') return keyringStore(platform, service, account)
   return { read: unsupported, write: unsupported, remove: unsupported }
+}
+
+// The round trip CI makes with each standalone binary (LUMBER_STORE_CHECK, in cli.ts), as credentialStore.test.ts does
+// with the source: save, read back, replace and remove an item in the system's real store, under a name of its own, so
+// it never touches a session lumber saved
+export const checkStore = async (store: SecretStore = storeFor(process.platform, `${SERVICE} test`, `check-${process.pid}`)): Promise<void> => {
+  const readsBack = async (when: string, wanted: string | null) => {
+    const value = await store.read()
+    if (value !== wanted) throw new Error(`${capitalize(storeName())} gave back ${value === null ? 'nothing' : 'something else'} ${when}`)
+  }
+  try {
+    await store.remove()
+    await readsBack('before saving', null)
+    const session = JSON.stringify({ userId: 'user-1', email: 'jé@example.com', token: 'x'.repeat(600), privateKey: 'k'.repeat(44), color: '#60A5FA' })
+    await store.write(session)
+    await readsBack('after saving', session)
+    await store.write('{"replaced":true}')
+    await readsBack('after replacing', '{"replaced":true}')
+    await store.remove()
+    await readsBack('after removing', null)
+  } finally {
+    await store.remove()
+  }
 }
 
 const store = storeFor(process.platform)

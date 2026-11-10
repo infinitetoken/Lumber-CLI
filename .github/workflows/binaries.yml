@@ -1,0 +1,134 @@
+# The standalone lumber (scripts/sea.mjs): Node 26 and the CLI in one executable, for winget, Scoop and anyone who'd
+# rather not install Node. Each target builds on its own system's runner, then the built binary is checked as someone
+# would use it (version, help, an MCP handshake) and saves, reads and removes a test item in that system's real
+# credential store. On a v* tag, beside the npm publish, the archives go up as the tag's GitHub Release with their
+# SHA256SUMS and a build provenance attestation; scoop.yml and winget.yml follow that release.
+name: Binaries
+run-name: "Binaries: ${{ github.ref_type == 'tag' && github.ref_name || github.event.pull_request.title || github.event.head_commit.message }}"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: windows-x64, os: windows-latest }
+          - { target: windows-arm64, os: windows-11-arm }
+          - { target: linux-x64, os: ubuntu-latest }
+          - { target: linux-arm64, os: ubuntu-24.04-arm }
+          - { target: macos-arm64, os: macos-latest }
+          - { target: macos-x64, os: macos-15-intel }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      LUMBER: build/sea/${{ matrix.target }}/lumber${{ startsWith(matrix.target, 'windows') && '.exe' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node 26 is what goes inside the binary: the runner's own architecture, from nodejs.org
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build lumber for ${{ matrix.target }}
+        run: node scripts/sea.mjs build --target ${{ matrix.target }}
+
+      - name: Run it (version, help, MCP)
+        run: node scripts/check-binary.mjs "$LUMBER"
+
+      # A runner has no desktop session, so no Secret Service: the binary has to say so, which also loads the native
+      # library it carries, and never fall back to a file
+      - name: Say plainly when there's no Secret Service
+        if: runner.os == 'Linux'
+        run: |
+          if out=$("$LUMBER" status 2>&1); then echo "status passed with no Secret Service"; exit 1; fi
+          echo "$out"
+          echo "$out" | grep -q 'none is running here'
+
+      - name: Save, read and remove a test item in the Secret Service
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnome-keyring dbus
+          # shellcheck disable=SC2016 # $LUMBER expands in the inner bash, which has it from the job's env
+          dbus-run-session -- bash -c 'echo -n ci | gnome-keyring-daemon --unlock --components=secrets > /dev/null && LUMBER_STORE_CHECK=1 "$LUMBER"'
+
+      - name: Save, read and remove a test item in the ${{ runner.os == 'macOS' && 'Keychain' || 'Credential Manager' }}
+        if: runner.os != 'Linux'
+        run: LUMBER_STORE_CHECK=1 "$LUMBER"
+
+      - name: Pack it
+        run: node scripts/sea.mjs pack --target ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lumber-${{ matrix.target }}
+          path: release/lumber-*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: lumber-*
+          path: release
+          merge-multiple: true
+
+      # Built from package.json's version, so a tag that doesn't match it would release under the wrong name
+      - name: Check the files and write SHA256SUMS
+        working-directory: release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for target in windows-x64 windows-arm64 linux-x64 linux-arm64 macos-arm64 macos-x64; do
+            ls "lumber-${version}-${target}".* > /dev/null || { echo "No lumber ${version} for ${target}"; exit 1; }
+          done
+          sha256sum lumber-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/lumber-*
+
+      - name: Release ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          notes="lumber ${GITHUB_REF_NAME#v} for Windows, macOS and Linux, with Node built in: unpack it and run lumber. The other ways to install it are in the [README](https://github.com/${GH_REPO}#installation).
+
+          Check a download against SHA256SUMS, or where it was built with \`gh attestation verify <file> --repo ${GH_REPO}\`."
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/* --verify-tag --title "$GITHUB_REF_NAME" --notes "$notes"
+          fi

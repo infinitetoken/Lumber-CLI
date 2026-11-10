@@ -1,0 +1,57 @@
+# Sends each GitHub Release of the standalone lumber to winget (microsoft/winget-pkgs, InfiniteToken.LumberCLI). After
+# a Binaries run for a v* tag, and on demand (gh workflow run winget.yml), it writes the version's manifests from the
+# release (scripts/winget.mjs) and keeps them as an artifact. With a WINGET_TOKEN secret (a classic token with the
+# public_repo scope, from the account whose fork of winget-pkgs the pull request comes from), Komac opens the pull
+# request; Microsoft's checks and a moderator take it from there. Without the secret it stops after the manifests.
+name: winget
+run-name: winget manifests
+
+on:
+  workflow_run:
+    workflows: [Binaries]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  KOMAC_VERSION: 2.17.2
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Write the manifests for the latest release
+        id: manifests
+        run: |
+          node scripts/winget.mjs
+          echo "dir=$(ls -d build/winget/manifests/i/InfiniteToken/LumberCLI/*)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: winget-manifests
+          path: build/winget/manifests
+
+      - name: Submit them to winget-pkgs
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if [ -z "$GITHUB_TOKEN" ]; then echo "::notice::No WINGET_TOKEN secret, so nothing was sent to winget-pkgs: the manifests are this run's artifact"; exit 0; fi
+          cd "$RUNNER_TEMP"
+          gh release download "v${KOMAC_VERSION}" --repo russellbanks/Komac --pattern "komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz" --pattern SHA256SUMS
+          grep -E " \*?komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz$" SHA256SUMS | sha256sum -c -
+          tar -xzf "komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          komac="$(find . -name komac -type f | head -1)"
+          "$komac" submit "$GITHUB_WORKSPACE/${{ steps.manifests.outputs.dir }}" --yes

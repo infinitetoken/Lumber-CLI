@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 
-import { keychainStore, type Keyring, keyringStore, NO_SECRET_SERVICE, storeFor, UNSUPPORTED } from '../credentials'
+import { checkStore, keychainStore, type Keyring, keyringStore, NO_SECRET_SERVICE, type SecretStore, storeFor, UNSUPPORTED } from '../credentials'
 import { StoreUnavailableError } from '../errors'
 
 // Each store is tested directly, wherever the tests run, so none of this pretends to be another system.
@@ -128,5 +128,30 @@ describe('storeFor', () => {
   it('says where lumber runs anywhere else', async () => {
     await expect(storeFor('aix').read()).rejects.toThrow(UNSUPPORTED)
     await expect(storeFor('freebsd').write('x')).rejects.toBeInstanceOf(StoreUnavailableError)
+  })
+})
+
+describe('checkStore', () => {
+  const memory = (broken?: 'write' | 'remove'): SecretStore & { value: string | null } => {
+    const store = {
+      value: null as string | null,
+      read: async () => store.value,
+      write: async (value: string) => void (store.value = broken === 'write' ? value.slice(1) : value),
+      remove: async () => void (broken === 'remove' || (store.value = null))
+    }
+    return store
+  }
+
+  it('saves, reads back, replaces and removes a test item, leaving nothing behind', async () => {
+    const store = memory()
+    await expect(checkStore(store)).resolves.toBeUndefined()
+    expect(store.value).toBeNull()
+  })
+
+  it('says which step the store got wrong', async () => {
+    await expect(checkStore(memory('write'))).rejects.toThrow('gave back something else after saving')
+    const sticky = memory('remove')
+    sticky.value = 'left over'
+    await expect(checkStore(sticky)).rejects.toThrow('gave back something else before saving')
   })
 })

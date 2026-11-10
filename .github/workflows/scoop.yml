@@ -1,0 +1,100 @@
+# Keeps bucket/lumber.json (this repo is also a Scoop bucket, as it's the Homebrew tap) on the latest GitHub Release
+# of the standalone lumber. After a Binaries run for a v* tag, and on demand (gh workflow run scoop.yml), it points the
+# manifest at that release's Windows zips (scripts/scoop.mjs), has Scoop install it from this repo as a bucket on x64
+# and arm64 runners and runs it, and commits it to main when it changed. Pull before the next release, as for Homebrew.
+name: Scoop
+run-name: Scoop manifest
+
+on:
+  workflow_run:
+    workflows: [Binaries]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && startsWith(github.event.workflow_run.head_branch, 'v'))
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Point the manifest at the latest release
+        run: node scripts/scoop.mjs
+
+      # Added as people add it, from this checkout with the manifest just written committed here (never pushed), and
+      # installed by its bucket's name
+      - name: Install it with Scoop
+        run: |
+          git add bucket/lumber.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE) { git -c user.name=ci -c user.email=ci@localhost commit -q -m 'Scoop: test' }
+          Invoke-RestMethod -Uri https://get.scoop.sh -OutFile install-scoop.ps1
+          ./install-scoop.ps1 -RunAsAdmin
+          $shims = Join-Path $HOME 'scoop\shims'
+          $env:PATH = "$shims;$env:PATH"
+          scoop bucket add lumber $env:GITHUB_WORKSPACE
+          scoop install lumber/lumber
+          if (-not (Get-Command lumber -ErrorAction SilentlyContinue)) { throw "Scoop didn't install lumber" }
+          Add-Content -Path $env:GITHUB_PATH -Value $shims
+
+      # Through Scoop's shim, which an agent starts with no shell
+      - name: Run it (version, help, MCP)
+        run: node scripts/check-binary.mjs (Get-Command lumber).Source
+
+      - name: Save, read and remove a test item in Credential Manager
+        run: |
+          $env:LUMBER_STORE_CHECK = '1'
+          lumber
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+  commit:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Point the manifest at the latest release
+        run: node scripts/scoop.mjs
+
+      # homebrew.yml commits after the same release, so a push can find main moved on: take that and push again
+      - name: Commit it when it changed
+        run: |
+          git add bucket/lumber.json
+          if git diff --cached --quiet; then echo "The bucket already has lumber $(node -p "require('./bucket/lumber.json').version")"; exit 0; fi
+          version="$(node -p "require('./bucket/lumber.json').version")"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Scoop: lumber ${version}" -- bucket/lumber.json
+          for _ in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && exit 0; sleep 5; done
+          exit 1

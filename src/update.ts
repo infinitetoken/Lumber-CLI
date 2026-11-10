@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 
 import { Color } from 'termkit'
 
+import { STANDALONE } from './constants'
 import { getAccent } from './format'
 
 // Saying when a newer lumber is on npm, without slowing a command down: the registry is asked at most once a day,
@@ -36,7 +37,32 @@ export const installedWithHomebrew = (script = process.argv[1]): boolean => {
   }
 }
 
-export const updateCommand = (homebrew = installedWithHomebrew()): string => (homebrew ? 'brew upgrade lumber' : `npm install -g ${PACKAGE}`)
+// How this lumber was installed, which says how to update it: npm or Homebrew, which run it on their Node, or the
+// standalone lumber (scripts/sea.mjs) through Scoop, through winget, or downloaded from the GitHub release
+export type Install = 'npm' | 'homebrew' | 'scoop' | 'winget' | 'download'
+
+export const RELEASES_URL = 'https://github.com/infinitetoken/Lumber-CLI/releases/latest'
+export const WINGET_ID = 'InfiniteToken.LumberCLI'
+
+// Scoop keeps each app under scoop\apps\<name>, and winget a portable one under WinGet\Packages\<id>_<source>, for
+// one person or for everyone (C:\ProgramData\scoop, C:\Program Files\WinGet). Both put a shim or a link on the PATH,
+// but the process runs from the real file
+export const howInstalled = (standalone = STANDALONE, executable = process.execPath, script = process.argv[1]): Install => {
+  if (!standalone) return installedWithHomebrew(script) ? 'homebrew' : 'npm'
+  let path = executable
+  try {
+    path = realpathSync(executable)
+  } catch {
+    // The path it was started by, then
+  }
+  if (/[\\/]scoop[\\/]apps[\\/]lumber[\\/]/i.test(path)) return 'scoop'
+  if (/[\\/]WinGet[\\/]Packages[\\/]InfiniteToken\.LumberCLI_/i.test(path)) return 'winget'
+  return 'download'
+}
+
+const UPDATE_COMMANDS: Record<Exclude<Install, 'download'>, string> = { npm: `npm install -g ${PACKAGE}`, homebrew: 'brew upgrade lumber', scoop: 'scoop update lumber', winget: `winget upgrade ${WINGET_ID}` }
+
+export const updateHint = (install: Install = howInstalled()): string => (install === 'download' ? `Download it from ${Color.bold(RELEASES_URL)}` : `Update with ${Color.bold(UPDATE_COMMANDS[install])}`)
 
 const readState = (file: string): UpdateState => {
   try {
@@ -70,7 +96,7 @@ export const isNewer = (latest: string, current: string): boolean => {
   return false
 }
 
-export const updateNotice = (latest: string, current: string, command = updateCommand()): string => `${Color.hex(getAccent())('↑')} lumber ${Color.bold(latest)} is out (you have ${current}). Update with ${Color.bold(command)}`
+export const updateNotice = (latest: string, current: string, install: Install = howInstalled()): string => `${Color.hex(getAccent())('↑')} lumber ${Color.bold(latest)} is out (you have ${current}). ${updateHint(install)}`
 
 type CheckOptions = { version: string; file?: string; now?: () => number; fetch?: typeof fetch }
 

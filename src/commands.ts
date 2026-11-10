@@ -2,7 +2,7 @@ import type { UserRecord } from '@infinitetoken/lumber-kit'
 import { Color, Program, type Spinner, Table } from 'termkit'
 
 import { type App, loadApps, pickApps } from './apps'
-import { THIS_COMPUTER, VERSION } from './constants'
+import { STANDALONE, THIS_COMPUTER, VERSION } from './constants'
 import { ApiError, NotSignedInError, StoreUnavailableError, UsageError } from './errors'
 import { appName, capitalize, formatJson, formatLog, formatTime, lumberSpinner, say, THEME, type Tone, toned, useAccent } from './format'
 import { login, logout } from './login'
@@ -159,8 +159,9 @@ const tail = async (options: ListOptions & { quiet?: boolean }) => {
 
 const listOptions = [Program.option('l', 'level', '<level>', 'A level and above (warn), or exact levels (info,warn): debug, info, warn, error, fatal'), Program.option('g', 'grep', '<text>', 'Only logs containing this text, ignoring case'), Program.option('v', 'verbose', null, 'Show ids, context and metadata under each log'), Program.option(null, 'json', null, 'One JSON object per log, for scripts and agents')]
 
-// npm installs lumber on Windows as a .cmd file, which an agent can only start through cmd
-const MCP_ADD = `claude mcp add lumber -- ${process.platform === 'win32' ? 'cmd /c ' : ''}lumber mcp`
+// npm installs lumber on Windows as a .cmd file, which an agent can only start through cmd. The standalone lumber
+// (winget, Scoop) is an .exe, which it starts directly
+const MCP_ADD = `claude mcp add lumber -- ${process.platform === 'win32' && !STANDALONE ? 'cmd /c ' : ''}lumber mcp`
 
 const program = Program.command('lumber')
   .version(VERSION)

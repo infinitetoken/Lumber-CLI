@@ -1,5 +1,7 @@
 # Build output
 dist/
+build/
+release/
 
 # Environmental Variables
 .env

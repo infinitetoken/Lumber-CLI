@@ -24,6 +24,20 @@ brew install infinitetoken/lumber/lumber
 
 Naming it in full the first time is what has Homebrew trust the formula. Update with `brew upgrade lumber`.
 
+On Windows with [Scoop](https://scoop.sh), which needs no Node: this repo is also the bucket.
+
+```powershell
+scoop bucket add lumber https://github.com/infinitetoken/Lumber-CLI
+```
+
+```powershell
+scoop install lumber/lumber
+```
+
+Update with `scoop update lumber`.
+
+Or download `lumber` itself, with Node built in, for Windows, macOS or Linux (x64 or arm64) from the [latest release](https://github.com/infinitetoken/Lumber-CLI/releases/latest), unpack it and put it on your PATH. Check a download against the release's `SHA256SUMS`, or where it was built with `gh attestation verify <file> --repo infinitetoken/Lumber-CLI`. On a Mac the download isn't notarized yet, so one a browser saved runs only after `xattr -d com.apple.quarantine lumber`: Homebrew is the easier way there.
+
 ## Signing in
 
 ```bash
@@ -73,7 +87,7 @@ Claude Code:
 claude mcp add lumber -- lumber mcp
 ```
 
-On Windows, npm installs `lumber` as a `.cmd` file, which an agent can only start through `cmd`:
+On Windows, npm installs `lumber` as a `.cmd` file, which an agent can only start through `cmd` (installed with Scoop or downloaded, `lumber` is an `.exe`, and the line above works as it is):
 
 ```bash
 claude mcp add lumber -- cmd /c lumber mcp
@@ -89,7 +103,7 @@ Claude Desktop, in its `claude_desktop_config.json` (on macOS and Linux, use the
 }
 ```
 
-On Windows:
+On Windows, with npm's `lumber`:
 
 ```json
 {
@@ -98,6 +112,8 @@ On Windows:
   }
 }
 ```
+
+With Scoop's or the downloaded `lumber.exe`, `"command": "lumber"` works there too.
 
 Tools:
 
@@ -123,7 +139,7 @@ Each app's logs are encrypted with its own key before they leave your servers (A
 ## Requirements
 
 - macOS, Windows, or Linux with a Secret Service (GNOME Keyring or KWallet).
-- Node 20 or later.
+- Node 20 or later, when installed with npm or Homebrew. Scoop's and the downloaded `lumber` carry their own.
 - A Lumber account, and a phone or Mac where Lumber already has your account key, to show the code that links this computer.
 
 ## Publishing
