@@ -1,0 +1,34 @@
+{
+    "version": "0.4.0",
+    "description": "Read your Lumber logs from the terminal and from AI agents over MCP, decrypted on your computer",
+    "homepage": "https://lumber.infinitetoken.com/docs/cli",
+    "license": "MIT",
+    "notes": "Sign in and link this computer with: lumber login",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/infinitetoken/Lumber-CLI/releases/download/v0.4.0/lumber-0.4.0-windows-x64.zip",
+            "hash": "6c6eb616728e786087da7bdb20e3cb5821371b7729c897c10dfaebf362ae3456"
+        },
+        "arm64": {
+            "url": "https://github.com/infinitetoken/Lumber-CLI/releases/download/v0.4.0/lumber-0.4.0-windows-arm64.zip",
+            "hash": "12878e7709785cd70ce0fc9f5e5fe337399a11a2706e6e6ee4c85b13a8f75dc0"
+        }
+    },
+    "bin": "lumber.exe",
+    "checkver": {
+        "github": "https://github.com/infinitetoken/Lumber-CLI"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/infinitetoken/Lumber-CLI/releases/download/v$version/lumber-$version-windows-x64.zip"
+            },
+            "arm64": {
+                "url": "https://github.com/infinitetoken/Lumber-CLI/releases/download/v$version/lumber-$version-windows-arm64.zip"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS"
+        }
+    }
+}
