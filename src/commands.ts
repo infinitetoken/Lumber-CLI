@@ -58,10 +58,17 @@ const status = async () => {
   else say.warn(`${capitalize(THIS_COMPUTER)} reads ${readable} of ${plural(apps.length, 'app')}: the rest wait for someone who has their keys to share them`)
 }
 
+// Past its team's monthly logs only errors are taken, and at twice them nothing is, until the month turns
+const monthlyLimitNote = (app: App, now = new Date()): string | null => {
+  if (app.logsStoppedUntil && new Date(app.logsStoppedUntil) > now) return Color.hex(THEME.error)(`logs refused until ${formatTime(app.logsStoppedUntil)}`)
+  if (app.logsCappedUntil && new Date(app.logsCappedUntil) > now) return Color.hex(THEME.warn)(`monthly limit reached: errors only until ${formatTime(app.logsCappedUntil)}`)
+  return null
+}
+
 const apps = async ({ json }: { json?: boolean }) => {
   const { apps: list } = await openApps()
   if (json) {
-    for (const app of list) out(JSON.stringify({ id: app.id, name: app.name, color: app.color, readable: !!app.key, retentionDays: app.retentionDays, logsCappedUntil: app.logsCappedUntil }))
+    for (const app of list) out(JSON.stringify({ id: app.id, name: app.name, color: app.color, readable: !!app.key, retentionDays: app.retentionDays, logsCappedUntil: app.logsCappedUntil, logsStoppedUntil: app.logsStoppedUntil }))
     return
   }
   if (!list.length) return say.info('No apps yet.')
@@ -69,7 +76,7 @@ const apps = async ({ json }: { json?: boolean }) => {
     list.map((app) => ({
       name: appName(app.name, app.color, 'bold'),
       id: Color.faint(app.id),
-      notes: [!app.key && Color.hex(THEME.warn)(`locked: no key on ${THIS_COMPUTER}`), app.retentionDays && `kept ${app.retentionDays} days`, app.logsCappedUntil && new Date(app.logsCappedUntil) > new Date() && Color.hex(THEME.error)(`monthly limit reached until ${formatTime(app.logsCappedUntil)}`)].filter(Boolean).join(' · ')
+      notes: [!app.key && Color.hex(THEME.warn)(`locked: no key on ${THIS_COMPUTER}`), app.retentionDays && `kept ${app.retentionDays} days`, monthlyLimitNote(app)].filter(Boolean).join(' · ')
     })),
     {
       columns: [

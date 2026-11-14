@@ -76,6 +76,20 @@ describe('lumber', () => {
     ).toEqual(['Locked', 'Lumber-Test'])
   })
 
+  // Past the monthly logs only errors are taken, and at twice them none (Lumber-API, 2026-11-13)
+  it("says when an app's team is at its monthly limit, and at its hard stop", async () => {
+    const later = new Date(Date.now() + 86_400_000).toISOString()
+    const capped = () => page([appRecord({ logsCappedUntil: later }), appRecord({ id: 'app-2', name: 'Stopped', logsCappedUntil: later, logsStoppedUntil: later })])
+    jest.mocked(openClient).mockResolvedValue(fakeClient({ '/apps': capped }))
+    expect(await runCommand(['apps'])).toBe(0)
+    expect(stdout).toMatch(/Lumber-Test .*monthly limit reached: errors only until/)
+    expect(stdout).toMatch(/Stopped .*logs refused until/)
+    expect(stdout).not.toMatch(/Stopped .*errors only/)
+    stdout = ''
+    expect(await runCommand(['apps', '--json'])).toBe(0)
+    expect(JSON.parse(stdout.trim().split('\n')[0])).toMatchObject({ name: 'Lumber-Test', logsCappedUntil: later, logsStoppedUntil: null })
+  })
+
   it('says who is signed in and what this computer reads, taking up a new accent', async () => {
     jest.mocked(openClient).mockResolvedValue(fakeClient({ '/apps': twoApps, '/me': () => ({ data: { email: 'jay@example.com', color: '#60A5FA' }, metadata: { requestId: 'r', durationMs: 1 } }) }))
     expect(await runCommand(['status'])).toBe(0)

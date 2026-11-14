@@ -3,7 +3,7 @@ import { UsageError } from '../errors'
 import { logsSince, matchesText, parseLevels, readLog, searchLogs } from '../logs'
 import { APP_KEY, fakeClient, logRecord, page } from './fixtures'
 
-const app: App = { id: 'app-1', name: 'Lumber-Test', color: '#8B5CF6', retentionDays: null, logsCappedUntil: null, key: APP_KEY }
+const app: App = { id: 'app-1', name: 'Lumber-Test', color: '#8B5CF6', retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null, key: APP_KEY }
 
 describe('parseLevels', () => {
   it('reads one level as it and those above it', () => {

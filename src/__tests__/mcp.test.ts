@@ -33,8 +33,8 @@ describe('lumber mcp', () => {
     expect(json).toEqual({
       signedInAs: 'jay@example.com',
       apps: [
-        { id: 'app-2', name: 'Locked', readable: false, retentionDays: null, logsCappedUntil: null },
-        { id: 'app-1', name: 'Lumber-Test', readable: true, retentionDays: null, logsCappedUntil: null }
+        { id: 'app-2', name: 'Locked', readable: false, retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null },
+        { id: 'app-1', name: 'Lumber-Test', readable: true, retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null }
       ]
     })
   })

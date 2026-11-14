@@ -4,7 +4,7 @@ import { type App, loadApps, pickApps } from '../apps'
 import { UsageError } from '../errors'
 import { APP_KEY, appRecord, fakeClient, page } from './fixtures'
 
-const app = (id: string, name: string): App => ({ id, name, color: nameColor(name), retentionDays: null, logsCappedUntil: null, key: null })
+const app = (id: string, name: string): App => ({ id, name, color: nameColor(name), retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null, key: null })
 
 describe('loadApps', () => {
   it('unwraps each app key with the account key and colors each app as its avatar does, sorted by name', async () => {
@@ -12,9 +12,9 @@ describe('loadApps', () => {
       '/apps': () => page([appRecord({ id: 'b', name: 'Web', retentionDays: 7, color: '#123456' }), appRecord({ id: 'a', name: 'Billing', encryptedKey: null }), appRecord({ id: 'c', name: 'Api', encryptedKey: 'bm90IGEga2V5' })])
     })
     expect(await loadApps(client)).toEqual([
-      { id: 'c', name: 'Api', color: nameColor('Api'), retentionDays: null, logsCappedUntil: null, key: null },
-      { id: 'a', name: 'Billing', color: '#22C55E', retentionDays: null, logsCappedUntil: null, key: null },
-      { id: 'b', name: 'Web', color: '#123456', retentionDays: 7, logsCappedUntil: null, key: APP_KEY }
+      { id: 'c', name: 'Api', color: nameColor('Api'), retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null, key: null },
+      { id: 'a', name: 'Billing', color: '#22C55E', retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null, key: null },
+      { id: 'b', name: 'Web', color: '#123456', retentionDays: 7, logsCappedUntil: null, logsStoppedUntil: null, key: APP_KEY }
     ])
   })
 })

@@ -12,7 +12,10 @@ export type App = {
   // Its own color, or its name's, as its avatar shows it
   color: string
   retentionDays: number | null
+  // While its team is past its plan's monthly logs, when every level is taken again; until then only ERROR and FATAL
   logsCappedUntil: string | null
+  // While its team is at its hard stop, twice its monthly logs, when any log is taken again
+  logsStoppedUntil: string | null
   key: string | null
 }
 
@@ -35,6 +38,7 @@ export const loadApps = async (client: Client): Promise<App[]> => {
       color: resolveAppColor(record.name, record.color),
       retentionDays: record.retentionDays ?? null,
       logsCappedUntil: record.logsCappedUntil ?? null,
+      logsStoppedUntil: record.logsStoppedUntil ?? null,
       key: keyOf(record, client.session.privateKey)
     }))
     .sort((a, b) => a.name.localeCompare(b.name))

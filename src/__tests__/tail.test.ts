@@ -7,8 +7,8 @@ const mockHandlers = new Map<string, (...args: unknown[]) => void>()
 const mockSocket = { on: (event: string, handler: (...args: unknown[]) => void) => mockHandlers.set(event, handler), emit: jest.fn(), disconnect: jest.fn() }
 jest.mock('socket.io-client', () => ({ io: jest.fn(() => mockSocket) }))
 
-const live: App = { id: 'app-1', name: 'Lumber-Test', color: '#8B5CF6', retentionDays: null, logsCappedUntil: null, key: APP_KEY }
-const hobby: App = { id: 'app-2', name: 'Side', color: '#F97316', retentionDays: 7, logsCappedUntil: null, key: APP_KEY }
+const live: App = { id: 'app-1', name: 'Lumber-Test', color: '#8B5CF6', retentionDays: null, logsCappedUntil: null, logsStoppedUntil: null, key: APP_KEY }
+const hobby: App = { id: 'app-2', name: 'Side', color: '#F97316', retentionDays: 7, logsCappedUntil: null, logsStoppedUntil: null, key: APP_KEY }
 
 const fire = (event: string, ...args: unknown[]) => mockHandlers.get(event)!(...args)
 

@@ -72,7 +72,7 @@ export const createServer = (): McpServer => {
     'list_apps',
     {
       title: 'List apps',
-      description: "The Lumber apps the signed-in person can read, with whether this machine has each one's key (readable), how many days of logs its plan keeps (retentionDays, null for no limit), and when new logs are taken again if it hit its monthly limit (logsCappedUntil).",
+      description: "The Lumber apps the signed-in person can read, with whether this machine has each one's key (readable), how many days of logs its plan keeps (retentionDays, null for no limit), and, past its team's monthly logs, when every level is taken again (logsCappedUntil: until then only error and fatal logs are) and, at twice them, when any log is (logsStoppedUntil).",
       annotations
     },
     () =>
@@ -81,7 +81,7 @@ export const createServer = (): McpServer => {
         const apps = await loadApps(client)
         return {
           signedInAs: client.session.email,
-          apps: apps.map((app) => ({ id: app.id, name: app.name, readable: !!app.key, retentionDays: app.retentionDays, logsCappedUntil: app.logsCappedUntil }))
+          apps: apps.map((app) => ({ id: app.id, name: app.name, readable: !!app.key, retentionDays: app.retentionDays, logsCappedUntil: app.logsCappedUntil, logsStoppedUntil: app.logsStoppedUntil }))
         }
       })
   )

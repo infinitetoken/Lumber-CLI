@@ -25,6 +25,7 @@ export const appRecord = (overrides: Partial<AppRecord> = {}): AppRecord => ({
   encryptedKey: WRAPPED_APP_KEY,
   retentionDays: null,
   logsCappedUntil: null,
+  logsStoppedUntil: null,
   ...overrides
 })
 
